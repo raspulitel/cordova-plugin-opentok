@@ -24,6 +24,11 @@ window.OT = {
   setLogLevel: function(a) {
     return console.log("Log Level Set");
   },
+  setErrorCallback: (function(_this) {
+    return function(callback) {
+      return _this.errorCallback = callback;
+    };
+  })(this),
   upgradeSystemRequirements: function() {
     return {};
   },
@@ -133,7 +138,7 @@ OTError = (function() {
 })();
 
 var TBEvent,
-  __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 TBEvent = (function() {
   function TBEvent(prop) {
@@ -215,23 +220,22 @@ replaceWithVideoStream = function(divName, streamId, properties) {
 };
 
 TBError = function(error) {
-  return navigator.notification.alert(error);
+  if (window.OT.errorCallback) {
+    return window.OT.errorCallback(error);
+  } else {
+    return console.error(error);
+  }
 };
 
-TBSuccess = function() {
-  return console.log("success");
-};
+TBSuccess = function() {};
 
 TBUpdateObjects = function() {
   var e, id, objects, position, ratios, streamId, _i, _len;
-  console.log("JS: Objects being updated in TBUpdateObjects");
   objects = document.getElementsByClassName('OT_root');
   ratios = TBGetScreenRatios();
   for (_i = 0, _len = objects.length; _i < _len; _i++) {
     e = objects[_i];
-    console.log("JS: Object updated");
     streamId = e.dataset.streamid;
-    console.log("JS sessionId: " + streamId);
     id = e.id;
     position = getPosition(id);
     Cordova.exec(TBSuccess, TBError, OTPlugin, "updateView", [streamId, position.top, position.left, position.width, position.height, TBGetZIndex(e), ratios.widthRatio, ratios.heightRatio]);
@@ -251,7 +255,6 @@ TBGetZIndex = function(ele) {
   var val;
   while ((ele != null)) {
     val = document.defaultView.getComputedStyle(ele, null).getPropertyValue('z-index');
-    console.log(val);
     if (parseInt(val)) {
       return val;
     }
@@ -272,7 +275,7 @@ pdebug = function(msg, data) {
 };
 
 var TBPublisher,
-  __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 TBPublisher = (function() {
   function TBPublisher(one, two, three) {
@@ -353,8 +356,10 @@ TBPublisher = (function() {
   };
 
   TBPublisher.prototype.removePublisherElement = function() {
-    this.pubElement.parentNode.removeChild(this.pubElement);
-    return this.pubElement = false;
+    if (this.pubElement && this.pubElement.parentNode) {
+      this.pubElement.parentNode.removeChild(this.element);
+    }
+    return this.pubElement = void 0;
   };
 
   TBPublisher.prototype.destroy = function() {
@@ -458,7 +463,7 @@ TBPublisher = (function() {
 })();
 
 var TBSession,
-  __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 TBSession = (function() {
   TBSession.prototype.connect = function(token, connectCompletionCallback) {
@@ -620,7 +625,6 @@ TBSession = (function() {
     this.connectionCreated = __bind(this.connectionCreated, this);
     this.eventReceived = __bind(this.eventReceived, this);
     this.publish = __bind(this.publish, this);
-    this.publish = __bind(this.publish, this);
     this.apiKey = this.apiKey.toString();
     this.connections = {};
     this.streams = {};
@@ -717,7 +721,9 @@ TBSession = (function() {
     if (stream) {
       element = streamElements[stream.streamId];
       if (element) {
-        element.parentNode.removeChild(element);
+        if (element.parentNode) {
+          element.parentNode.removeChild(element);
+        }
         delete streamElements[stream.streamId];
         TBUpdateObjects();
       }
@@ -931,109 +937,109 @@ DefaultHeight = 198;
   window.OTHelpers = OTHelpers;
 
   OTHelpers.keys = Object.keys || function(object) {
-    var keys = [], hasOwnProperty = Object.prototype.hasOwnProperty;
-    for(var key in object) {
-      if(hasOwnProperty.call(object, key)) {
-        keys.push(key);
-      }
-    }
-    return keys;
-  };
+        var keys = [], hasOwnProperty = Object.prototype.hasOwnProperty;
+        for(var key in object) {
+          if(hasOwnProperty.call(object, key)) {
+            keys.push(key);
+          }
+        }
+        return keys;
+      };
 
   var _each = Array.prototype.forEach || function(iter, ctx) {
-    for(var idx = 0, count = this.length || 0; idx < count; ++idx) {
-      if(idx in this) {
-        iter.call(ctx, this[idx], idx);
-      }
-    }
-  };
+        for(var idx = 0, count = this.length || 0; idx < count; ++idx) {
+          if(idx in this) {
+            iter.call(ctx, this[idx], idx);
+          }
+        }
+      };
 
   OTHelpers.forEach = function(array, iter, ctx) {
     return _each.call(array, iter, ctx);
   };
 
   var _map = Array.prototype.map || function(iter, ctx) {
-    var collect = [];
-    _each.call(this, function(item, idx) {
-      collect.push(iter.call(ctx, item, idx));
-    });
-    return collect;
-  };
+        var collect = [];
+        _each.call(this, function(item, idx) {
+          collect.push(iter.call(ctx, item, idx));
+        });
+        return collect;
+      };
 
   OTHelpers.map = function(array, iter) {
     return _map.call(array, iter);
   };
 
   var _filter = Array.prototype.filter || function(iter, ctx) {
-    var collect = [];
-    _each.call(this, function(item, idx) {
-      if(iter.call(ctx, item, idx)) {
-        collect.push(item);
-      }
-    });
-    return collect;
-  };
+        var collect = [];
+        _each.call(this, function(item, idx) {
+          if(iter.call(ctx, item, idx)) {
+            collect.push(item);
+          }
+        });
+        return collect;
+      };
 
   OTHelpers.filter = function(array, iter, ctx) {
     return _filter.call(array, iter, ctx);
   };
 
   var _some = Array.prototype.some || function(iter, ctx) {
-    var any = false;
-    for(var idx = 0, count = this.length || 0; idx < count; ++idx) {
-      if(idx in this) {
-        if(iter.call(ctx, this[idx], idx)) {
-          any = true;
-          break;
+        var any = false;
+        for(var idx = 0, count = this.length || 0; idx < count; ++idx) {
+          if(idx in this) {
+            if(iter.call(ctx, this[idx], idx)) {
+              any = true;
+              break;
+            }
+          }
         }
-      }
-    }
-    return any;
-  };
+        return any;
+      };
 
   OTHelpers.some = function(array, iter, ctx) {
     return _some.call(array, iter, ctx);
   };
 
   var _indexOf = Array.prototype.indexOf || function(searchElement, fromIndex) {
-    var i,
-        pivot = (fromIndex) ? fromIndex : 0,
-        length;
+        var i,
+            pivot = (fromIndex) ? fromIndex : 0,
+            length;
 
-    if (!this) {
-      throw new TypeError();
-    }
+        if (!this) {
+          throw new TypeError();
+        }
 
-    length = this.length;
+        length = this.length;
 
-    if (length === 0 || pivot >= length) {
-      return -1;
-    }
+        if (length === 0 || pivot >= length) {
+          return -1;
+        }
 
-    if (pivot < 0) {
-      pivot = length - Math.abs(pivot);
-    }
+        if (pivot < 0) {
+          pivot = length - Math.abs(pivot);
+        }
 
-    for (i = pivot; i < length; i++) {
-      if (this[i] === searchElement) {
-        return i;
-      }
-    }
-    return -1;
-  };
+        for (i = pivot; i < length; i++) {
+          if (this[i] === searchElement) {
+            return i;
+          }
+        }
+        return -1;
+      };
 
   OTHelpers.arrayIndexOf = function(array, searchElement, fromIndex) {
     return _indexOf.call(array, searchElement, fromIndex);
   };
 
   var _bind = Function.prototype.bind || function() {
-    var args = Array.prototype.slice.call(arguments),
-        ctx = args.shift(),
-        fn = this;
-    return function() {
-      return fn.apply(ctx, args.concat(Array.prototype.slice.call(arguments)));
-    };
-  };
+        var args = Array.prototype.slice.call(arguments),
+            ctx = args.shift(),
+            fn = this;
+        return function() {
+          return fn.apply(ctx, args.concat(Array.prototype.slice.call(arguments)));
+        };
+      };
 
   OTHelpers.bind = function() {
     var args = Array.prototype.slice.call(arguments),
@@ -1042,8 +1048,8 @@ DefaultHeight = 198;
   };
 
   var _trim = String.prototype.trim || function() {
-    return this.replace(/^\s+|\s+$/g, '');
-  };
+        return this.replace(/^\s+|\s+$/g, '');
+      };
 
   OTHelpers.trim = function(str) {
     return _trim.call(str);
@@ -1067,13 +1073,13 @@ DefaultHeight = 198;
 
   OTHelpers.isFunction = function(obj) {
     return !!obj && (obj.toString().indexOf('()') !== -1 ||
-      Object.prototype.toString.call(obj) === '[object Function]');
+        Object.prototype.toString.call(obj) === '[object Function]');
   };
 
   OTHelpers.isArray = OTHelpers.isFunction(Array.isArray) && Array.isArray ||
-    function (vArg) {
-      return Object.prototype.toString.call(vArg) === '[object Array]';
-    };
+      function (vArg) {
+        return Object.prototype.toString.call(vArg) === '[object Array]';
+      };
 
   OTHelpers.isEmpty = function(obj) {
     if (obj === null || obj === undefined) return true;
@@ -1150,10 +1156,10 @@ DefaultHeight = 198;
     var performance = window.performance || {},
         navigationStart,
         now =  performance.now       ||
-               performance.mozNow    ||
-               performance.msNow     ||
-               performance.oNow      ||
-               performance.webkitNow;
+            performance.mozNow    ||
+            performance.msNow     ||
+            performance.oNow      ||
+            performance.webkitNow;
 
     if (now) {
       now = OTHelpers.bind(now, performance);
@@ -1211,7 +1217,7 @@ DefaultHeight = 198;
       }
 
     } else if ((navigatorVendor = window.navigator.vendor) &&
-      navigatorVendor.toLowerCase().indexOf('apple') > -1) {
+        navigatorVendor.toLowerCase().indexOf('apple') > -1) {
       browser = 'Safari';
 
       if (/version\/([0-9]{1,}[\.0-9]{0,})/.exec(userAgent) !== null) {
@@ -1294,7 +1300,7 @@ DefaultHeight = 198;
   OTHelpers.defineProperties = function(object, getterSetters) {
     for (var key in getterSetters) {
       object[key] = generatePropertyFunction(object, getterSetters[key].get,
-        getterSetters[key].set);
+          getterSetters[key].set);
     }
   };
 
@@ -1437,17 +1443,17 @@ DefaultHeight = 198;
 
     // Combine delimiters into one regular expression via alternation.
     var matcher = new RegExp([
-      (settings.escape || noMatch).source,
-      (settings.interpolate || noMatch).source,
-      (settings.evaluate || noMatch).source
-    ].join('|') + '|$', 'g');
+          (settings.escape || noMatch).source,
+          (settings.interpolate || noMatch).source,
+          (settings.evaluate || noMatch).source
+        ].join('|') + '|$', 'g');
 
     // Compile the template source, escaping string literals appropriately.
     var index = 0;
     var source = '__p+=\'';
     text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
       source += text.slice(index, offset)
-        .replace(escaper, function(match) { return '\\' + escapes[match]; });
+          .replace(escaper, function(match) { return '\\' + escapes[match]; });
 
       if (escape) {
         source += '\'+\n((__t=(' + escape + '))==null?\'\':OTHelpers.escape(__t))+\n\'';
@@ -1467,8 +1473,8 @@ DefaultHeight = 198;
     if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
 
     source = 'var __t,__p=\'\',__j=Array.prototype.join,' +
-      'print=function(){__p+=__j.call(arguments,\'\');};\n' +
-      source + 'return __p;\n';
+        'print=function(){__p+=__j.call(arguments,\'\');};\n' +
+        source + 'return __p;\n';
 
     try {
       // evil is necessary for the new Function line
@@ -1499,7 +1505,7 @@ DefaultHeight = 198;
 (function(window, OTHelpers, undefined) {
 
   OTHelpers.statable = function(self, possibleStates, initialState, stateChanged,
-    stateChangedFailed) {
+                                stateChangedFailed) {
     var previousState,
         currentState = self.currentState = initialState;
 
@@ -1638,13 +1644,13 @@ DefaultHeight = 198;
   function unparse(buf, offset) {
     var i = offset || 0, bth = _byteToHex;
     return  bth[buf[i++]] + bth[buf[i++]] +
-            bth[buf[i++]] + bth[buf[i++]] + '-' +
-            bth[buf[i++]] + bth[buf[i++]] + '-' +
-            bth[buf[i++]] + bth[buf[i++]] + '-' +
-            bth[buf[i++]] + bth[buf[i++]] + '-' +
-            bth[buf[i++]] + bth[buf[i++]] +
-            bth[buf[i++]] + bth[buf[i++]] +
-            bth[buf[i++]] + bth[buf[i++]];
+        bth[buf[i++]] + bth[buf[i++]] + '-' +
+        bth[buf[i++]] + bth[buf[i++]] + '-' +
+        bth[buf[i++]] + bth[buf[i++]] + '-' +
+        bth[buf[i++]] + bth[buf[i++]] + '-' +
+        bth[buf[i++]] + bth[buf[i++]] +
+        bth[buf[i++]] + bth[buf[i++]] +
+        bth[buf[i++]] + bth[buf[i++]];
   }
 
   // **`v4()` - Generate random UUID**
@@ -1696,7 +1702,7 @@ DefaultHeight = 198;
 
 (function(window, OTHelpers, undefined) {
 
-OTHelpers.useLogHelpers = function(on){
+  OTHelpers.useLogHelpers = function(on){
 
     // Log levels for OTLog.setLogLevel
     on.DEBUG    = 5;
@@ -1711,9 +1717,9 @@ OTHelpers.useLogHelpers = function(on){
         _canApplyConsole = true;
 
     try {
-        Function.prototype.bind.call(window.console.log, window.console);
+      Function.prototype.bind.call(window.console.log, window.console);
     } catch (err) {
-        _canApplyConsole = false;
+      _canApplyConsole = false;
     }
 
     // Some objects can't be logged in the console, mostly these are certain
@@ -1722,9 +1728,9 @@ OTHelpers.useLogHelpers = function(on){
     var makeLogArgumentsSafe = function(args) { return args; };
 
     if (OTHelpers.browser() === 'IE') {
-        makeLogArgumentsSafe = function(args) {
-            return [toDebugString(Array.prototype.slice.apply(args))];
-        };
+      makeLogArgumentsSafe = function(args) {
+        return [toDebugString(Array.prototype.slice.apply(args))];
+      };
     }
 
     // Generates a logging method for a particular method and log level.
@@ -1736,41 +1742,41 @@ OTHelpers.useLogHelpers = function(on){
     // * attempt to deal with weird IE hosted logging methods as best we can.
     //
     function generateLoggingMethod(method, level, fallback) {
-        return function() {
-            if (on.shouldLog(level)) {
-                var cons = window.console,
-                    args = makeLogArgumentsSafe(arguments);
+      return function() {
+        if (on.shouldLog(level)) {
+          var cons = window.console,
+              args = makeLogArgumentsSafe(arguments);
 
-                // In IE, window.console may not exist if the developer tools aren't open
-                // This also means that cons and cons[method] can appear at any moment
-                // hence why we retest this every time.
-                if (cons && cons[method]) {
-                    // the desired console method isn't a real object, which means
-                    // that we can't use apply on it. We force it to be a real object
-                    // using Function.bind, assuming that's available.
-                    if (cons[method].apply || _canApplyConsole) {
-                        if (!cons[method].apply) {
-                            cons[method] = Function.prototype.bind.call(cons[method], cons);
-                        }
+          // In IE, window.console may not exist if the developer tools aren't open
+          // This also means that cons and cons[method] can appear at any moment
+          // hence why we retest this every time.
+          if (cons && cons[method]) {
+            // the desired console method isn't a real object, which means
+            // that we can't use apply on it. We force it to be a real object
+            // using Function.bind, assuming that's available.
+            if (cons[method].apply || _canApplyConsole) {
+              if (!cons[method].apply) {
+                cons[method] = Function.prototype.bind.call(cons[method], cons);
+              }
 
-                        cons[method].apply(cons, args);
-                    }
-                    else {
-                        // This isn't the same result as the above, but it's better
-                        // than nothing.
-                        cons[method](args);
-                    }
-                }
-                else if (fallback) {
-                    fallback.apply(on, args);
-
-                    // Skip appendToLogs, we delegate entirely to the fallback
-                    return;
-                }
-
-                appendToLogs(method, makeLogArgumentsSafe(arguments));
+              cons[method].apply(cons, args);
             }
-        };
+            else {
+              // This isn't the same result as the above, but it's better
+              // than nothing.
+              cons[method](args);
+            }
+          }
+          else if (fallback) {
+            fallback.apply(on, args);
+
+            // Skip appendToLogs, we delegate entirely to the fallback
+            return;
+          }
+
+          appendToLogs(method, makeLogArgumentsSafe(arguments));
+        }
+      };
     }
 
     on.log = generateLoggingMethod('log', on.LOG);
@@ -1783,92 +1789,92 @@ OTHelpers.useLogHelpers = function(on){
 
 
     on.setLogLevel = function(level) {
-        _logLevel = typeof(level) === 'number' ? level : 0;
-        on.debug("TB.setLogLevel(" + _logLevel + ")");
-        return _logLevel;
+      _logLevel = typeof(level) === 'number' ? level : 0;
+      on.debug("TB.setLogLevel(" + _logLevel + ")");
+      return _logLevel;
     };
 
     on.getLogs = function() {
-        return _logs;
+      return _logs;
     };
 
     // Determine if the level is visible given the current logLevel.
     on.shouldLog = function(level) {
-        return _logLevel >= level;
+      return _logLevel >= level;
     };
 
     // Format the current time nicely for logging. Returns the current
     // local time.
     function formatDateStamp() {
-        var now = new Date();
-        return now.toLocaleTimeString() + now.getMilliseconds();
+      var now = new Date();
+      return now.toLocaleTimeString() + now.getMilliseconds();
     }
 
     function toJson(object) {
-        try {
-            return JSON.stringify(object);
-        } catch(e) {
-            return object.toString();
-        }
+      try {
+        return JSON.stringify(object);
+      } catch(e) {
+        return object.toString();
+      }
     }
 
     function toDebugString(object) {
-        var components = [];
+      var components = [];
 
-        if (typeof(object) === 'undefined') {
-            // noop
+      if (typeof(object) === 'undefined') {
+        // noop
+      }
+      else if (object === null) {
+        components.push('NULL');
+      }
+      else if (OTHelpers.isArray(object)) {
+        for (var i=0; i<object.length; ++i) {
+          components.push(toJson(object[i]));
         }
-        else if (object === null) {
-            components.push('NULL');
-        }
-        else if (OTHelpers.isArray(object)) {
-            for (var i=0; i<object.length; ++i) {
-                components.push(toJson(object[i]));
-            }
-        }
-        else if (OTHelpers.isObject(object)) {
-            for (var key in object) {
-                var stringValue;
+      }
+      else if (OTHelpers.isObject(object)) {
+        for (var key in object) {
+          var stringValue;
 
-                if (!OTHelpers.isFunction(object[key])) {
-                    stringValue = toJson(object[key]);
-                }
-                else if (object.hasOwnProperty(key)) {
-                    stringValue = 'function ' + key + '()';
-                }
+          if (!OTHelpers.isFunction(object[key])) {
+            stringValue = toJson(object[key]);
+          }
+          else if (object.hasOwnProperty(key)) {
+            stringValue = 'function ' + key + '()';
+          }
 
-                components.push(key + ': ' + stringValue);
-            }
+          components.push(key + ': ' + stringValue);
         }
-        else if (OTHelpers.isFunction(object)) {
-            try {
-                components.push(object.toString());
-            } catch(e) {
-                components.push('function()');
-            }
+      }
+      else if (OTHelpers.isFunction(object)) {
+        try {
+          components.push(object.toString());
+        } catch(e) {
+          components.push('function()');
         }
-        else  {
-            components.push(object.toString());
-        }
+      }
+      else  {
+        components.push(object.toString());
+      }
 
-        return components.join(", ");
+      return components.join(", ");
     }
 
     // Append +args+ to logs, along with the current log level and the a date stamp.
     function appendToLogs(level, args) {
-        if (!args) return;
+      if (!args) return;
 
-        var message = toDebugString(args);
-        if (message.length <= 2) return;
+      var message = toDebugString(args);
+      if (message.length <= 2) return;
 
-        _logs.push(
-            [level, formatDateStamp(), message]
-        );
+      _logs.push(
+          [level, formatDateStamp(), message]
+      );
     }
-};
+  };
 
-OTHelpers.useLogHelpers(OTHelpers);
-OTHelpers.setLogLevel(OTHelpers.ERROR);
+  OTHelpers.useLogHelpers(OTHelpers);
+  OTHelpers.setLogLevel(OTHelpers.ERROR);
 
 })(window, window.OTHelpers);
 
@@ -1878,14 +1884,14 @@ OTHelpers.setLogLevel(OTHelpers.ERROR);
 
 (function(window, OTHelpers, undefined) {
 
-OTHelpers.castToBoolean = function(value, defaultValue) {
+  OTHelpers.castToBoolean = function(value, defaultValue) {
     if (value === undefined) return defaultValue;
     return value === 'true' || value === true;
-};
+  };
 
-OTHelpers.roundFloat = function(value, places) {
+  OTHelpers.roundFloat = function(value, places) {
     return Number(value.toFixed(places));
-};
+  };
 
 })(window, window.OTHelpers);
 /*jshint browser:true, smarttabs:true*/
@@ -1960,12 +1966,12 @@ OTHelpers.roundFloat = function(value, places) {
 
 (function(window, OTHelpers, undefined) {
 
-/**
-* This base class defines the <code>on</code>, <code>once</code>, and <code>off</code>
-* methods of objects that can dispatch events.
-*
-* @class EventDispatcher
-*/
+  /**
+   * This base class defines the <code>on</code>, <code>once</code>, and <code>off</code>
+   * methods of objects that can dispatch events.
+   *
+   * @class EventDispatcher
+   */
   OTHelpers.eventing = function(self, syncronous) {
     var _events = {};
 
@@ -2061,7 +2067,7 @@ OTHelpers.roundFloat = function(value, places) {
     }
 
     var executeListeners = syncronous === true ?
-      executeListenersSyncronously : executeListenersAsyncronously;
+        executeListenersSyncronously : executeListenersAsyncronously;
 
 
     var removeAllListenersNamed = function (eventName, context) {
@@ -2181,47 +2187,47 @@ OTHelpers.roundFloat = function(value, places) {
       return this;
     };
 
-   /**
-    * Adds an event handler function for one or more events.
-    *
-    * <p>
-    * The following code adds an event handler for one event:
-    * </p>
-    *
-    * <pre>
-    * obj.on("eventName", function (event) {
+    /**
+     * Adds an event handler function for one or more events.
+     *
+     * <p>
+     * The following code adds an event handler for one event:
+     * </p>
+     *
+     * <pre>
+     * obj.on("eventName", function (event) {
     *     // This is the event handler.
     * });
-    * </pre>
-    *
-    * <p>If you pass in multiple event names and a handler method, the handler is
-    * registered for each of those events:</p>
-    *
-    * <pre>
-    * obj.on("eventName1 eventName2",
-    *        function (event) {
+     * </pre>
+     *
+     * <p>If you pass in multiple event names and a handler method, the handler is
+     * registered for each of those events:</p>
+     *
+     * <pre>
+     * obj.on("eventName1 eventName2",
+     *        function (event) {
     *            // This is the event handler.
     *        });
-    * </pre>
-    *
-    * <p>You can also pass in a third <code>context</code> parameter (which is optional) to
-    * define the value of <code>this</code> in the handler method:</p>
-    *
-    * <pre>obj.on("eventName",
-    *        function (event) {
+     * </pre>
+     *
+     * <p>You can also pass in a third <code>context</code> parameter (which is optional) to
+     * define the value of <code>this</code> in the handler method:</p>
+     *
+     * <pre>obj.on("eventName",
+     *        function (event) {
     *            // This is the event handler.
     *        },
-    *        obj);
-    * </pre>
-    *
-    * <p>
-    * The method also supports an alternate syntax, in which the first parameter is an object
-    * that is a hash map of event names and handler functions and the second parameter (optional)
-    * is the context for this in each handler:
-    * </p>
-    * <pre>
-    * obj.on(
-    *    {
+     *        obj);
+     * </pre>
+     *
+     * <p>
+     * The method also supports an alternate syntax, in which the first parameter is an object
+     * that is a hash map of event names and handler functions and the second parameter (optional)
+     * is the context for this in each handler:
+     * </p>
+     * <pre>
+     * obj.on(
+     *    {
     *       eventName1: function (event) {
     *               // This is the handler for eventName1.
     *           },
@@ -2229,29 +2235,29 @@ OTHelpers.roundFloat = function(value, places) {
     *               // This is the handler for eventName2.
     *           }
     *    },
-    *    obj);
-    * </pre>
-    *
-    * <p>
-    * If you do not add a handler for an event, the event is ignored locally.
-    * </p>
-    *
-    * @param {String} type The string identifying the type of event. You can specify multiple event
-    * names in this string, separating them with a space. The event handler will process each of
-    * the events.
-    * @param {Function} handler The handler function to process the event. This function takes
-    * the event object as a parameter.
-    * @param {Object} context (Optional) Defines the value of <code>this</code> in the event
-    * handler function.
-    *
-    * @returns {EventDispatcher} The EventDispatcher object.
-    *
-    * @memberOf EventDispatcher
-    * @method #on
-    * @see <a href="#off">off()</a>
-    * @see <a href="#once">once()</a>
-    * @see <a href="#events">Events</a>
-    */
+     *    obj);
+     * </pre>
+     *
+     * <p>
+     * If you do not add a handler for an event, the event is ignored locally.
+     * </p>
+     *
+     * @param {String} type The string identifying the type of event. You can specify multiple event
+     * names in this string, separating them with a space. The event handler will process each of
+     * the events.
+     * @param {Function} handler The handler function to process the event. This function takes
+     * the event object as a parameter.
+     * @param {Object} context (Optional) Defines the value of <code>this</code> in the event
+     * handler function.
+     *
+     * @returns {EventDispatcher} The EventDispatcher object.
+     *
+     * @memberOf EventDispatcher
+     * @method #on
+     * @see <a href="#off">off()</a>
+     * @see <a href="#once">once()</a>
+     * @see <a href="#events">Events</a>
+     */
     self.on = function(eventNames, handlerOrContext, context) {
       if (typeof(eventNames) === 'string' && handlerOrContext) {
         addListeners(eventNames.split(' '), handlerOrContext, context);
@@ -2267,63 +2273,63 @@ OTHelpers.roundFloat = function(value, places) {
       return this;
     };
 
-   /**
-    * Removes an event handler or handlers.
-    *
-    * <p>If you pass in one event name and a handler method, the handler is removed for that
-    * event:</p>
-    *
-    * <pre>obj.off("eventName", eventHandler);</pre>
-    *
-    * <p>If you pass in multiple event names and a handler method, the handler is removed for
-    * those events:</p>
-    *
-    * <pre>obj.off("eventName1 eventName2", eventHandler);</pre>
-    *
-    * <p>If you pass in an event name (or names) and <i>no</i> handler method, all handlers are
-    * removed for those events:</p>
-    *
-    * <pre>obj.off("event1Name event2Name");</pre>
-    *
-    * <p>If you pass in no arguments, <i>all</i> event handlers are removed for all events
-    * dispatched by the object:</p>
-    *
-    * <pre>obj.off();</pre>
-    *
-    * <p>
-    * The method also supports an alternate syntax, in which the first parameter is an object that
-    * is a hash map of event names and handler functions and the second parameter (optional) is
-    * the context for this in each handler:
-    * </p>
-    * <pre>
-    * obj.off(
-    *    {
+    /**
+     * Removes an event handler or handlers.
+     *
+     * <p>If you pass in one event name and a handler method, the handler is removed for that
+     * event:</p>
+     *
+     * <pre>obj.off("eventName", eventHandler);</pre>
+     *
+     * <p>If you pass in multiple event names and a handler method, the handler is removed for
+     * those events:</p>
+     *
+     * <pre>obj.off("eventName1 eventName2", eventHandler);</pre>
+     *
+     * <p>If you pass in an event name (or names) and <i>no</i> handler method, all handlers are
+     * removed for those events:</p>
+     *
+     * <pre>obj.off("event1Name event2Name");</pre>
+     *
+     * <p>If you pass in no arguments, <i>all</i> event handlers are removed for all events
+     * dispatched by the object:</p>
+     *
+     * <pre>obj.off();</pre>
+     *
+     * <p>
+     * The method also supports an alternate syntax, in which the first parameter is an object that
+     * is a hash map of event names and handler functions and the second parameter (optional) is
+     * the context for this in each handler:
+     * </p>
+     * <pre>
+     * obj.off(
+     *    {
     *       eventName1: event1Handler,
     *       eventName2: event2Handler
     *    });
-    * </pre>
-    *
-    * @param {String} type (Optional) The string identifying the type of event. You can
-    * use a space to specify multiple events, as in "accessAllowed accessDenied
-    * accessDialogClosed". If you pass in no <code>type</code> value (or other arguments),
-    * all event handlers are removed for the object.
-    * @param {Function} handler (Optional) The event handler function to remove. The handler
-    * must be the same function object as was passed into <code>on()</code>. Be careful with
-    * helpers like <code>bind()</code> that return a new function when called. If you pass in
-    * no <code>handler</code>, all event handlers are removed for the specified event
-    * <code>type</code>.
-    * @param {Object} context (Optional) If you specify a <code>context</code>, the event handler
-    * is removed for all specified events and handlers that use the specified context. (The
-    * context must match the context passed into <code>on()</code>.)
-    *
-    * @returns {Object} The object that dispatched the event.
-    *
-    * @memberOf EventDispatcher
-    * @method #off
-    * @see <a href="#on">on()</a>
-    * @see <a href="#once">once()</a>
-    * @see <a href="#events">Events</a>
-    */
+     * </pre>
+     *
+     * @param {String} type (Optional) The string identifying the type of event. You can
+     * use a space to specify multiple events, as in "accessAllowed accessDenied
+     * accessDialogClosed". If you pass in no <code>type</code> value (or other arguments),
+     * all event handlers are removed for the object.
+     * @param {Function} handler (Optional) The event handler function to remove. The handler
+     * must be the same function object as was passed into <code>on()</code>. Be careful with
+     * helpers like <code>bind()</code> that return a new function when called. If you pass in
+     * no <code>handler</code>, all event handlers are removed for the specified event
+     * <code>type</code>.
+     * @param {Object} context (Optional) If you specify a <code>context</code>, the event handler
+     * is removed for all specified events and handlers that use the specified context. (The
+     * context must match the context passed into <code>on()</code>.)
+     *
+     * @returns {Object} The object that dispatched the event.
+     *
+     * @memberOf EventDispatcher
+     * @method #off
+     * @see <a href="#on">on()</a>
+     * @see <a href="#once">once()</a>
+     * @see <a href="#events">Events</a>
+     */
     self.off = function(eventNames, handlerOrContext, context) {
       if (typeof eventNames === 'string') {
         if (handlerOrContext && OTHelpers.isFunction(handlerOrContext)) {
@@ -2351,52 +2357,53 @@ OTHelpers.roundFloat = function(value, places) {
     };
 
 
-   /**
-    * Adds an event handler function for one or more events. Once the handler is called,
-    * the specified handler method is removed as a handler for this event. (When you use
-    * the <code>on()</code> method to add an event handler, the handler is <i>not</i>
-    * removed when it is called.) The <code>once()</code> method is the equivilent of
-    * calling the <code>on()</code>
-    * method and calling <code>off()</code> the first time the handler is invoked.
-    *
-    * <p>
-    * The following code adds a one-time event handler for the <code>accessAllowed</code> event:
-    * </p>
-    *
-    * <pre>
-    * obj.once("eventName", function (event) {
+    /**
+     * Adds an event handler function for one or more events. Once the handler is called,
+     * the specified handler method is removed as a handler for this event. (When you use
+     * the <code>on()</code> method to add an event handler, the handler is <i>not</i>
+     * removed when it is called.) The <code>once()</code> method is the equivilent of
+     * calling the <code>on()</code>
+     * method and calling <code>off()</code> the first time the handler is invoked.
+     *
+     * <p>
+     * The following code adds a one-time event handler for the <code>accessAllowed</code> event:
+     * </p>
+     *
+     * <pre>
+     * obj.once("eventName", function (event) {
     *    // This is the event handler.
     * });
-    * </pre>
-    *
-    * <p>If you pass in multiple event names and a handler method, the handler is registered
-    * for each of those events:</p>
-    *
-    * <pre>obj.once("eventName1 eventName2"
-    *          function (event) {
+     * </pre>
+     *
+     * <p>If you pass in multiple event names and a handler method, the handler is registered
+     * for each of those events:</p>
+     *
+     * <pre>obj.once("eventName1 eventName2"
+     *          function (event) {
+     *
     *              // This is the event handler.
     *          });
-    * </pre>
-    *
-    * <p>You can also pass in a third <code>context</code> parameter (which is optional) to define
-    * the value of
-    * <code>this</code> in the handler method:</p>
-    *
-    * <pre>obj.once("eventName",
-    *          function (event) {
+     * </pre>
+     *
+     * <p>You can also pass in a third <code>context</code> parameter (which is optional) to define
+     * the value of
+     * <code>this</code> in the handler method:</p>
+     *
+     * <pre>obj.once("eventName",
+     *          function (event) {
     *              // This is the event handler.
     *          },
-    *          obj);
-    * </pre>
-    *
-    * <p>
-    * The method also supports an alternate syntax, in which the first parameter is an object that
-    * is a hash map of event names and handler functions and the second parameter (optional) is the
-    * context for this in each handler:
-    * </p>
-    * <pre>
-    * obj.once(
-    *    {
+     *          obj);
+     * </pre>
+     *
+     * <p>
+     * The method also supports an alternate syntax, in which the first parameter is an object that
+     * is a hash map of event names and handler functions and the second parameter (optional) is the
+     * context for this in each handler:
+     * </p>
+     * <pre>
+     * obj.once(
+     *    {
     *       eventName1: function (event) {
     *                  // This is the event handler for eventName1.
     *           },
@@ -2404,26 +2411,26 @@ OTHelpers.roundFloat = function(value, places) {
     *                  // This is the event handler for eventName1.
     *           }
     *    },
-    *    obj);
-    * </pre>
-    *
-    * @param {String} type The string identifying the type of event. You can specify multiple
-    * event names in this string, separating them with a space. The event handler will process
-    * the first occurence of the events. After the first event, the handler is removed (for
-    * all specified events).
-    * @param {Function} handler The handler function to process the event. This function takes
-    * the event object as a parameter.
-    * @param {Object} context (Optional) Defines the value of <code>this</code> in the event
-    * handler function.
-    *
-    * @returns {Object} The object that dispatched the event.
-    *
-    * @memberOf EventDispatcher
-    * @method #once
-    * @see <a href="#on">on()</a>
-    * @see <a href="#off">off()</a>
-    * @see <a href="#events">Events</a>
-    */
+     *    obj);
+     * </pre>
+     *
+     * @param {String} type The string identifying the type of event. You can specify multiple
+     * event names in this string, separating them with a space. The event handler will process
+     * the first occurence of the events. After the first event, the handler is removed (for
+     * all specified events).
+     * @param {Function} handler The handler function to process the event. This function takes
+     * the event object as a parameter.
+     * @param {Object} context (Optional) Defines the value of <code>this</code> in the event
+     * handler function.
+     *
+     * @returns {Object} The object that dispatched the event.
+     *
+     * @memberOf EventDispatcher
+     * @method #once
+     * @see <a href="#on">on()</a>
+     * @see <a href="#off">off()</a>
+     * @see <a href="#events">Events</a>
+     */
     self.once = function(eventNames, handler, context) {
       var names = eventNames.split(' '),
           fun = OTHelpers.bind(function() {
@@ -2439,32 +2446,32 @@ OTHelpers.roundFloat = function(value, places) {
 
 
     /**
-    * Deprecated; use <a href="#on">on()</a> or <a href="#once">once()</a> instead.
-    * <p>
-    * This method registers a method as an event listener for a specific event.
-    * <p>
-    *
-    * <p>
-    *   If a handler is not registered for an event, the event is ignored locally. If the
-    *   event listener function does not exist, the event is ignored locally.
-    * </p>
-    * <p>
-    *   Throws an exception if the <code>listener</code> name is invalid.
-    * </p>
-    *
-    * @param {String} type The string identifying the type of event.
-    *
-    * @param {Function} listener The function to be invoked when the object dispatches the event.
-    *
-    * @param {Object} context (Optional) Defines the value of <code>this</code> in the event
-    * handler function.
-    *
-    * @memberOf EventDispatcher
-    * @method #addEventListener
-    * @see <a href="#on">on()</a>
-    * @see <a href="#once">once()</a>
-    * @see <a href="#events">Events</a>
-    */
+     * Deprecated; use <a href="#on">on()</a> or <a href="#once">once()</a> instead.
+     * <p>
+     * This method registers a method as an event listener for a specific event.
+     * <p>
+     *
+     * <p>
+     *   If a handler is not registered for an event, the event is ignored locally. If the
+     *   event listener function does not exist, the event is ignored locally.
+     * </p>
+     * <p>
+     *   Throws an exception if the <code>listener</code> name is invalid.
+     * </p>
+     *
+     * @param {String} type The string identifying the type of event.
+     *
+     * @param {Function} listener The function to be invoked when the object dispatches the event.
+     *
+     * @param {Object} context (Optional) Defines the value of <code>this</code> in the event
+     * handler function.
+     *
+     * @memberOf EventDispatcher
+     * @method #addEventListener
+     * @see <a href="#on">on()</a>
+     * @see <a href="#once">once()</a>
+     * @see <a href="#events">Events</a>
+     */
     // See 'on' for usage.
     // @depreciated will become a private helper function in the future.
     self.addEventListener = function(eventName, handler, context) {
@@ -2474,29 +2481,29 @@ OTHelpers.roundFloat = function(value, places) {
 
 
     /**
-    * Deprecated; use <a href="#on">on()</a> or <a href="#once">once()</a> instead.
-    * <p>
-    * Removes an event listener for a specific event.
-    * <p>
-    *
-    * <p>
-    *   Throws an exception if the <code>listener</code> name is invalid.
-    * </p>
-    *
-    * @param {String} type The string identifying the type of event.
-    *
-    * @param {Function} listener The event listener function to remove.
-    *
-    * @param {Object} context (Optional) If you specify a <code>context</code>, the event
-    * handler is removed for all specified events and event listeners that use the specified
-    context. (The context must match the context passed into
-    * <code>addEventListener()</code>.)
-    *
-    * @memberOf EventDispatcher
-    * @method #removeEventListener
-    * @see <a href="#off">off()</a>
-    * @see <a href="#events">Events</a>
-    */
+     * Deprecated; use <a href="#on">on()</a> or <a href="#once">once()</a> instead.
+     * <p>
+     * Removes an event listener for a specific event.
+     * <p>
+     *
+     * <p>
+     *   Throws an exception if the <code>listener</code> name is invalid.
+     * </p>
+     *
+     * @param {String} type The string identifying the type of event.
+     *
+     * @param {Function} listener The event listener function to remove.
+     *
+     * @param {Object} context (Optional) If you specify a <code>context</code>, the event
+     * handler is removed for all specified events and event listeners that use the specified
+     context. (The context must match the context passed into
+     * <code>addEventListener()</code>.)
+     *
+     * @memberOf EventDispatcher
+     * @method #removeEventListener
+     * @see <a href="#off">off()</a>
+     * @see <a href="#events">Events</a>
+     */
     // See 'off' for usage.
     // @depreciated will become a private helper function in the future.
     self.removeEventListener = function(eventName, handler, context) {
@@ -2518,12 +2525,12 @@ OTHelpers.roundFloat = function(value, places) {
     var env = jasmine.getEnv();
     if (env) {
       addListeners = jasmine.createSpy('spy on OTHelpers.eventing.addListeners')
-        .andCallFake(addListeners);
+          .andCallFake(addListeners);
       removeListeners = jasmine.createSpy('spy on OTHelpers.eventing.removeListeners')
-        .andCallFake(removeListeners);
+          .andCallFake(removeListeners);
       removeAllListenersNamed = jasmine
-        .createSpy('spy on OTHelpers.eventing.removeAllListenersNamed')
-        .andCallFake(removeAllListenersNamed);
+          .createSpy('spy on OTHelpers.eventing.removeAllListenersNamed')
+          .andCallFake(removeAllListenersNamed);
 
       /*global afterEach:true*/
       afterEach(function() {
@@ -2559,7 +2566,7 @@ OTHelpers.roundFloat = function(value, places) {
           _defaultPrevented = true;
         } else {
           OTHelpers.warn('Event.preventDefault :: Trying to preventDefault ' +
-            'on an Event that isn\'t cancelable');
+              'on an Event that isn\'t cancelable');
         }
       };
 
@@ -2569,7 +2576,7 @@ OTHelpers.roundFloat = function(value, places) {
     };
 
   };
-  
+
 })(window, window.OTHelpers);
 
 /*jshint browser:true, smarttabs:true*/
@@ -2580,29 +2587,29 @@ OTHelpers.roundFloat = function(value, places) {
 // DOM helpers
 (function(window, OTHelpers, undefined) {
 
-OTHelpers.isElementNode = function(node) {
+  OTHelpers.isElementNode = function(node) {
     return node && typeof node === 'object' && node.nodeType == 1;
-};
+  };
 
 // Returns true if the client supports element.classList
-OTHelpers.supportsClassList = function() {
+  OTHelpers.supportsClassList = function() {
     var hasSupport = typeof(document !== "undefined") && ("classList" in document.createElement("a"));
     OTHelpers.supportsClassList = function() { return hasSupport; };
 
     return hasSupport;
-};
+  };
 
-OTHelpers.removeElement = function(element) {
+  OTHelpers.removeElement = function(element) {
     if (element && element.parentNode) {
-        element.parentNode.removeChild(element);
+      element.parentNode.removeChild(element);
     }
-};
+  };
 
-OTHelpers.removeElementById = function(elementId) {
+  OTHelpers.removeElementById = function(elementId) {
     this.removeElement(OTHelpers(elementId));
-};
+  };
 
-OTHelpers.removeElementsByType = function(parentElem, type) {
+  OTHelpers.removeElementsByType = function(parentElem, type) {
     if (!parentElem) return;
 
     var elements = parentElem.getElementsByTagName(type);
@@ -2613,121 +2620,121 @@ OTHelpers.removeElementsByType = function(parentElem, type) {
     // element" as the collection length and the elements indices will be modified
     // with each iteration.
     while (elements.length) {
-        parentElem.removeChild(elements[0]);
+      parentElem.removeChild(elements[0]);
     }
-};
+  };
 
-OTHelpers.emptyElement = function(element) {
+  OTHelpers.emptyElement = function(element) {
     while (element.firstChild) {
-        element.removeChild(element.firstChild);
+      element.removeChild(element.firstChild);
     }
     return element;
-};
+  };
 
-OTHelpers.createElement = function(nodeName, attributes, children, doc) {
+  OTHelpers.createElement = function(nodeName, attributes, children, doc) {
     var element = (doc || document).createElement(nodeName);
 
     if (attributes) {
-        for (var name in attributes) {
-            if (typeof(attributes[name]) === 'object') {
-                if (!element[name]) element[name] = {};
+      for (var name in attributes) {
+        if (typeof(attributes[name]) === 'object') {
+          if (!element[name]) element[name] = {};
 
-                var subAttrs = attributes[name];
-                for (var n in subAttrs) {
-                    element[name][n] = subAttrs[n];
-                }
-            }
-            else if (name === 'className') {
-                element.className = attributes[name];
-            }
-            else {
-                element.setAttribute(name, attributes[name]);
-            }
+          var subAttrs = attributes[name];
+          for (var n in subAttrs) {
+            element[name][n] = subAttrs[n];
+          }
         }
+        else if (name === 'className') {
+          element.className = attributes[name];
+        }
+        else {
+          element.setAttribute(name, attributes[name]);
+        }
+      }
     }
 
     var setChildren = function(child) {
-        if(typeof child === 'string') {
-            element.innerHTML = element.innerHTML + child;
-        } else {
-            element.appendChild(child);
-        }
+      if(typeof child === 'string') {
+        element.innerHTML = element.innerHTML + child;
+      } else {
+        element.appendChild(child);
+      }
     };
 
     if(OTHelpers.isArray(children)) {
-        OTHelpers.forEach(children, setChildren);
+      OTHelpers.forEach(children, setChildren);
     } else if(children) {
-        setChildren(children);
+      setChildren(children);
     }
 
     return element;
-};
+  };
 
-OTHelpers.createButton = function(innerHTML, attributes, events) {
+  OTHelpers.createButton = function(innerHTML, attributes, events) {
     var button = OTHelpers.createElement('button', attributes, innerHTML);
 
     if (events) {
-        for (var name in events) {
-            if (events.hasOwnProperty(name)) {
-                OTHelpers.on(button, name, events[name]);
-            }
+      for (var name in events) {
+        if (events.hasOwnProperty(name)) {
+          OTHelpers.on(button, name, events[name]);
         }
+      }
 
-        button._boundEvents = events;
+      button._boundEvents = events;
     }
 
     return button;
-};
+  };
 
 // Helper function for adding event listeners to dom elements.
 // WARNING: This doesn't preserve event types, your handler could be getting all kinds of different
 // parameters depending on the browser. You also may have different scopes depending on the browser
 // and bubbling and cancelable are not supported.
-OTHelpers.on = function(element, eventName,  handler) {
+  OTHelpers.on = function(element, eventName,  handler) {
     if (element.addEventListener) {
-        element.addEventListener(eventName, handler, false);
+      element.addEventListener(eventName, handler, false);
     } else if (element.attachEvent) {
-        element.attachEvent("on" + eventName, handler);
+      element.attachEvent("on" + eventName, handler);
     } else {
-        var oldHandler = element["on"+eventName];
-        element["on"+eventName] = function() {
-          handler.apply(this, arguments);
-          if (oldHandler) oldHandler.apply(this, arguments);
-        };
+      var oldHandler = element["on"+eventName];
+      element["on"+eventName] = function() {
+        handler.apply(this, arguments);
+        if (oldHandler) oldHandler.apply(this, arguments);
+      };
     }
     return element;
-};
+  };
 
 // Helper function for removing event listeners from dom elements.
-OTHelpers.off = function(element, eventName, handler) {
+  OTHelpers.off = function(element, eventName, handler) {
     if (element.removeEventListener) {
-        element.removeEventListener (eventName, handler,false);
+      element.removeEventListener (eventName, handler,false);
     }
     else if (element.detachEvent) {
-        element.detachEvent("on" + eventName, handler);
+      element.detachEvent("on" + eventName, handler);
     }
-};
+  };
 
 
 // Detects when an element is not part of the document flow because it or one of it's ancesters has display:none.
-OTHelpers.isDisplayNone = function(element) {
+  OTHelpers.isDisplayNone = function(element) {
     if ( (element.offsetWidth === 0 || element.offsetHeight === 0) && OTHelpers.css(element, 'display') === 'none') return true;
     if (element.parentNode && element.parentNode.style) return OTHelpers.isDisplayNone(element.parentNode);
     return false;
-};
+  };
 
-OTHelpers.findElementWithDisplayNone = function(element) {
+  OTHelpers.findElementWithDisplayNone = function(element) {
     if ( (element.offsetWidth === 0 || element.offsetHeight === 0) && OTHelpers.css(element, 'display') === 'none') return element;
     if (element.parentNode && element.parentNode.style) return OTHelpers.findElementWithDisplayNone(element.parentNode);
     return null;
-};
+  };
 
-function objectHasProperties(obj) {
+  function objectHasProperties(obj) {
     for (var key in obj) {
-        if (obj.hasOwnProperty(key)) return true;
+      if (obj.hasOwnProperty(key)) return true;
     }
     return false;
-}
+  }
 
 
 // Allows an +onChange+ callback to be triggered when specific style properties
@@ -2752,67 +2759,67 @@ function objectHasProperties(obj) {
 //  dimensionsObserver.disconnect();
 //  dimensionsObserver = null;
 //
-OTHelpers.observeStyleChanges = function(element, stylesToObserve, onChange) {
+  OTHelpers.observeStyleChanges = function(element, stylesToObserve, onChange) {
     var oldStyles = {};
 
     var getStyle = function getStyle(style) {
-            switch (style) {
-            case 'width':
-                return OTHelpers.width(element);
+      switch (style) {
+        case 'width':
+          return OTHelpers.width(element);
 
-            case 'height':
-                return OTHelpers.height(element);
+        case 'height':
+          return OTHelpers.height(element);
 
-            default:
-                return OTHelpers.css(element);
-            }
-        };
+        default:
+          return OTHelpers.css(element);
+      }
+    };
 
     // get the inital values
     OTHelpers.forEach(stylesToObserve, function(style) {
-        oldStyles[style] = getStyle(style);
+      oldStyles[style] = getStyle(style);
     });
 
     var observer = new MutationObserver(function(mutations) {
-        var changeSet = {};
+      var changeSet = {};
 
-        OTHelpers.forEach(mutations, function(mutation) {
-            if (mutation.attributeName !== 'style') return;
+      OTHelpers.forEach(mutations, function(mutation) {
+        if (mutation.attributeName !== 'style') return;
 
-            var isHidden = OTHelpers.isDisplayNone(element);
+        var isHidden = OTHelpers.isDisplayNone(element);
 
-            OTHelpers.forEach(stylesToObserve, function(style) {
-                if(isHidden && (style == 'width' || style == 'height')) return;
-                
-                var newValue = getStyle(style);
+        OTHelpers.forEach(stylesToObserve, function(style) {
+          if(isHidden && (style == 'width' || style == 'height')) return;
 
-                if (newValue !== oldStyles[style]) {
-                    // OT.debug("CHANGED " + style + ": " + oldStyles[style] + " -> " + newValue);
+          var newValue = getStyle(style);
 
-                    changeSet[style] = [oldStyles[style], newValue];
-                    oldStyles[style] = newValue;
-                }
-            });
+          if (newValue !== oldStyles[style]) {
+            // OT.debug("CHANGED " + style + ": " + oldStyles[style] + " -> " + newValue);
+
+            changeSet[style] = [oldStyles[style], newValue];
+            oldStyles[style] = newValue;
+          }
         });
+      });
 
-        if (objectHasProperties(changeSet)) {
-            // Do this after so as to help avoid infinite loops of mutations.
-            OTHelpers.callAsync(function() {
-                onChange.call(null, changeSet);
-            });
-        }
+      if (objectHasProperties(changeSet)) {
+        // Do this after so as to help avoid infinite loops of mutations.
+        OTHelpers.callAsync(function() {
+          onChange.call(null, changeSet);
+        });
+      }
     });
 
     observer.observe(element, {
-        attributes:true,
-        attributeFilter: ['style'],
-        childList:false,
-        characterData:false,
-        subtree:false
+      attributes:true,
+      attributeFilter: ['style'],
+      childList:false,
+      characterData:false,
+      subtree:false
     });
 
     return observer;
-};
+  };
 
 
 // trigger the +onChange+ callback whenever
@@ -2836,33 +2843,33 @@ OTHelpers.observeStyleChanges = function(element, stylesToObserve, onChange) {
 //  nodeObserver.disconnect();
 //  nodeObserver = null;
 //
-OTHelpers.observeNodeOrChildNodeRemoval = function(element, onChange) {
+  OTHelpers.observeNodeOrChildNodeRemoval = function(element, onChange) {
     var observer = new MutationObserver(function(mutations) {
-        var removedNodes = [];
+      var removedNodes = [];
 
-        OTHelpers.forEach(mutations, function(mutation) {
-            if (mutation.removedNodes.length) {
-                removedNodes = removedNodes.concat(Array.prototype.slice.call(mutation.removedNodes));
-            }
-        });
-
-        if (removedNodes.length) {
-            // Do this after so as to help avoid infinite loops of mutations.
-            OTHelpers.callAsync(function() {
-                onChange(removedNodes);
-            });
+      OTHelpers.forEach(mutations, function(mutation) {
+        if (mutation.removedNodes.length) {
+          removedNodes = removedNodes.concat(Array.prototype.slice.call(mutation.removedNodes));
         }
+      });
+
+      if (removedNodes.length) {
+        // Do this after so as to help avoid infinite loops of mutations.
+        OTHelpers.callAsync(function() {
+          onChange(removedNodes);
+        });
+      }
     });
 
     observer.observe(element, {
-        attributes:false,
-        childList:true,
-        characterData:false,
-        subtree:true
+      attributes:false,
+      childList:true,
+      characterData:false,
+      subtree:true
     });
 
     return observer;
-};
+  };
 
 })(window, window.OTHelpers);
 
@@ -2919,13 +2926,13 @@ OTHelpers.observeNodeOrChildNodeRemoval = function(element, onChange) {
       doc.body.style.backgroundColor = 'transparent';
       doc.body.style.border = 'none';
       callback(
-        domElement.contentWindow,
-        doc
+          domElement.contentWindow,
+          doc
       );
     };
 
     document.body.appendChild(domElement);
-    
+
     if(OTHelpers.browserVersion().iframeNeedsLoad) {
       OTHelpers.on(domElement, 'load', wrappedCallback);
     } else {
@@ -2942,17 +2949,17 @@ OTHelpers.observeNodeOrChildNodeRemoval = function(element, onChange) {
     this.element = domElement;
 
   };
-  
+
 })(window, window.OTHelpers);
 
 /*
- * getComputedStyle from 
+ * getComputedStyle from
  * https://github.com/jonathantneal/Polyfills-for-IE8/blob/master/getComputedStyle.js
 
-// tb_require('../helpers.js')
-// tb_require('./dom.js')
+ // tb_require('../helpers.js')
+ // tb_require('./dom.js')
 
-/*jshint strict: false, eqnull: true, browser:true, smarttabs:true*/
+ /*jshint strict: false, eqnull: true, browser:true, smarttabs:true*/
 
 (function(window, OTHelpers, undefined) {
 
@@ -2966,31 +2973,31 @@ OTHelpers.observeNodeOrChildNodeRemoval = function(element, onChange) {
         rootSize;
 
     fontSize = fontSize != null ?
-      fontSize : /%|em/.test(suffix) && element.parentElement ?
+        fontSize : /%|em/.test(suffix) && element.parentElement ?
         getPixelSize(element.parentElement, element.parentElement.currentStyle, 'fontSize', null) :
         16;
     rootSize = property === 'fontSize' ?
-      fontSize : /width/i.test(property) ? element.clientWidth : element.clientHeight;
+        fontSize : /width/i.test(property) ? element.clientWidth : element.clientHeight;
 
     return (suffix === 'em') ?
-      size * fontSize : (suffix === 'in') ?
-        size * 96 : (suffix === 'pt') ?
-          size * 96 / 72 : (suffix === '%') ?
-            size / 100 * rootSize : size;
+    size * fontSize : (suffix === 'in') ?
+    size * 96 : (suffix === 'pt') ?
+    size * 96 / 72 : (suffix === '%') ?
+    size / 100 * rootSize : size;
   }
 
   function setShortStyleProperty(style, property) {
     var
-    borderSuffix = property === 'border' ? 'Width' : '',
-    t = property + 'Top' + borderSuffix,
-    r = property + 'Right' + borderSuffix,
-    b = property + 'Bottom' + borderSuffix,
-    l = property + 'Left' + borderSuffix;
+        borderSuffix = property === 'border' ? 'Width' : '',
+        t = property + 'Top' + borderSuffix,
+        r = property + 'Right' + borderSuffix,
+        b = property + 'Bottom' + borderSuffix,
+        l = property + 'Left' + borderSuffix;
 
     style[property] = (style[t] === style[r] === style[b] === style[l] ? [style[t]]
-    : style[t] === style[b] && style[l] === style[r] ? [style[t], style[r]]
-    : style[l] === style[r] ? [style[t], style[r], style[b]]
-    : [style[t], style[r], style[b], style[l]]).join(' ');
+        : style[t] === style[b] && style[l] === style[r] ? [style[t], style[r]]
+        : style[l] === style[r] ? [style[t], style[r], style[b]]
+        : [style[t], style[r], style[b], style[l]]).join(' ');
   }
 
   function CSSStyleDeclaration(element) {
@@ -3058,133 +3065,133 @@ OTHelpers.observeNodeOrChildNodeRemoval = function(element, onChange) {
 
 (function(window, OTHelpers, undefined) {
 
-OTHelpers.addClass = function(element, value) {
+  OTHelpers.addClass = function(element, value) {
     // Only bother targeting Element nodes, ignore Text Nodes, CDATA, etc
     if (element.nodeType !== 1) {
-        return;
+      return;
     }
 
     var classNames = OTHelpers.trim(value).split(/\s+/),
         i, l;
 
     if (OTHelpers.supportsClassList()) {
-        for (i=0, l=classNames.length; i<l; ++i) {
-            element.classList.add(classNames[i]);
-        }
+      for (i=0, l=classNames.length; i<l; ++i) {
+        element.classList.add(classNames[i]);
+      }
 
-        return;
+      return;
     }
 
     // Here's our fallback to browsers that don't support element.classList
 
     if (!element.className && classNames.length === 1) {
-        element.className = value;
+      element.className = value;
     }
     else {
-        var setClass = " " + element.className + " ";
+      var setClass = " " + element.className + " ";
 
-        for (i=0, l=classNames.length; i<l; ++i) {
-            if ( !~setClass.indexOf( " " + classNames[i] + " ")) {
-                setClass += classNames[i] + " ";
-            }
+      for (i=0, l=classNames.length; i<l; ++i) {
+        if ( !~setClass.indexOf( " " + classNames[i] + " ")) {
+          setClass += classNames[i] + " ";
         }
+      }
 
-        element.className = OTHelpers.trim(setClass);
+      element.className = OTHelpers.trim(setClass);
     }
 
     return this;
-};
+  };
 
-OTHelpers.removeClass = function(element, value) {
+  OTHelpers.removeClass = function(element, value) {
     if (!value) return;
 
     // Only bother targeting Element nodes, ignore Text Nodes, CDATA, etc
     if (element.nodeType !== 1) {
-        return;
+      return;
     }
 
     var newClasses = OTHelpers.trim(value).split(/\s+/),
         i, l;
 
     if (OTHelpers.supportsClassList()) {
-        for (i=0, l=newClasses.length; i<l; ++i) {
-            element.classList.remove(newClasses[i]);
-        }
+      for (i=0, l=newClasses.length; i<l; ++i) {
+        element.classList.remove(newClasses[i]);
+      }
 
-        return;
+      return;
     }
 
     var className = (" " + element.className + " ").replace(/[\s+]/, ' ');
 
     for (i=0,l=newClasses.length; i<l; ++i) {
-        className = className.replace(' ' + newClasses[i] + ' ', ' ');
+      className = className.replace(' ' + newClasses[i] + ' ', ' ');
     }
 
     element.className = OTHelpers.trim(className);
 
     return this;
-};
+  };
 
 
-/**
- * Methods to calculate element widths and heights.
- */
+  /**
+   * Methods to calculate element widths and heights.
+   */
 
-var _width = function(element) {
+  var _width = function(element) {
         if (element.offsetWidth > 0) {
-            return element.offsetWidth + 'px';
+          return element.offsetWidth + 'px';
         }
 
         return OTHelpers.css(element, 'width');
-    },
+      },
 
-    _height = function(element) {
+      _height = function(element) {
         if (element.offsetHeight > 0) {
-            return element.offsetHeight + 'px';
+          return element.offsetHeight + 'px';
         }
 
         return OTHelpers.css(element, 'height');
-    };
+      };
 
-OTHelpers.width = function(element, newWidth) {
+  OTHelpers.width = function(element, newWidth) {
     if (newWidth) {
-        OTHelpers.css(element, 'width', newWidth);
-        return this;
+      OTHelpers.css(element, 'width', newWidth);
+      return this;
     }
     else {
-        if (OTHelpers.isDisplayNone(element)) {
-            // We can't get the width, probably since the element is hidden.
-            return OTHelpers.makeVisibleAndYield(element, function() {
-                return _width(element);
-            });
-        }
-        else {
-            return _width(element);
-        }
+      if (OTHelpers.isDisplayNone(element)) {
+        // We can't get the width, probably since the element is hidden.
+        return OTHelpers.makeVisibleAndYield(element, function() {
+          return _width(element);
+        });
+      }
+      else {
+        return _width(element);
+      }
     }
-};
+  };
 
-OTHelpers.height = function(element, newHeight) {
+  OTHelpers.height = function(element, newHeight) {
     if (newHeight) {
-        OTHelpers.css(element, 'height', newHeight);
-        return this;
+      OTHelpers.css(element, 'height', newHeight);
+      return this;
     }
     else {
-        if (OTHelpers.isDisplayNone(element)) {
-            // We can't get the height, probably since the element is hidden.
-            return OTHelpers.makeVisibleAndYield(element, function() {
-                return _height(element);
-            });
-        }
-        else {
-            return _height(element);
-        }
+      if (OTHelpers.isDisplayNone(element)) {
+        // We can't get the height, probably since the element is hidden.
+        return OTHelpers.makeVisibleAndYield(element, function() {
+          return _height(element);
+        });
+      }
+      else {
+        return _height(element);
+      }
     }
-};
+  };
 
 // Centers +element+ within the window. You can pass through the width and height
 // if you know it, if you don't they will be calculated for you.
-OTHelpers.centerElement = function(element, width, height) {
+  OTHelpers.centerElement = function(element, width, height) {
     if (!width) width = parseInt(OTHelpers.width(element), 10);
     if (!height) height = parseInt(OTHelpers.height(element), 10);
 
@@ -3192,7 +3199,7 @@ OTHelpers.centerElement = function(element, width, height) {
     var marginTop = -0.5 * height + "px";
     OTHelpers.css(element, "margin", marginTop + " 0 0 " + marginLeft);
     OTHelpers.addClass(element, "OT_centered");
-};
+  };
 
 })(window, window.OTHelpers);
 
@@ -3210,27 +3217,27 @@ OTHelpers.centerElement = function(element, width, height) {
       defaultDisplays = {};
 
   var defaultDisplayValueForElement = function(element) {
-      if (defaultDisplays[element.ownerDocument] &&
+    if (defaultDisplays[element.ownerDocument] &&
         defaultDisplays[element.ownerDocument][element.nodeName]) {
-        return defaultDisplays[element.ownerDocument][element.nodeName];
-      }
+      return defaultDisplays[element.ownerDocument][element.nodeName];
+    }
 
-      if (!defaultDisplays[element.ownerDocument]) defaultDisplays[element.ownerDocument] = {};
-    
-      // We need to know what display value to use for this node. The easiest way
-      // is to actually create a node and read it out.
-      var testNode = element.ownerDocument.createElement(element.nodeName),
-          defaultDisplay;
+    if (!defaultDisplays[element.ownerDocument]) defaultDisplays[element.ownerDocument] = {};
 
-      element.ownerDocument.body.appendChild(testNode);
-      defaultDisplay = defaultDisplays[element.ownerDocument][element.nodeName] =
+    // We need to know what display value to use for this node. The easiest way
+    // is to actually create a node and read it out.
+    var testNode = element.ownerDocument.createElement(element.nodeName),
+        defaultDisplay;
+
+    element.ownerDocument.body.appendChild(testNode);
+    defaultDisplay = defaultDisplays[element.ownerDocument][element.nodeName] =
         OTHelpers.css(testNode, 'display');
 
-      OTHelpers.removeElement(testNode);
-      testNode = null;
+    OTHelpers.removeElement(testNode);
+    testNode = null;
 
-      return defaultDisplay;
-    };
+    return defaultDisplay;
+  };
 
   var isHidden = function(element) {
     var computedStyle = OTHelpers.getComputedStyle(element);
@@ -3358,7 +3365,7 @@ OTHelpers.centerElement = function(element, width, height) {
 
     for (var key in data) {
       queryString.push(
-        encodeURIComponent(key) + '=' + encodeURIComponent(data[key])
+          encodeURIComponent(key) + '=' + encodeURIComponent(data[key])
       );
     }
 
