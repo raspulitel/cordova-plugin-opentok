@@ -617,7 +617,7 @@ TBSession = (function() {
     var element, streamId;
     console.log("JS: Unsubscribe");
     if (!subscriber) {
-      console.error("Wrong subscriber");
+      console.log("Wrong subscriber");
       return;
     }
     streamId = subscriber.streamId;
