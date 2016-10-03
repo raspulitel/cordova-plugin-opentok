@@ -1,3518 +1,3319 @@
-window.OT = {
-  checkSystemRequirements: function() {
-    return 1;
-  },
-  initPublisher: function(one, two, three) {
-    return new TBPublisher(one, two, three);
-  },
-  initSession: function(apiKey, sessionId) {
-    if (sessionId == null) {
-      this.showError("OT.initSession takes 2 parameters, your API Key and Session ID");
-    }
-    return new TBSession(apiKey, sessionId);
-  },
-  log: function(message) {
-    return pdebug("TB LOG", message);
-  },
-  off: function(event, handler) {},
-  on: function(event, handler) {
-    if (event === "exception") {
-      console.log("JS: TB Exception Handler added");
-      return Cordova.exec(handler, TBError, OTPlugin, "exceptionHandler", []);
-    }
-  },
-  setLogLevel: function(a) {
-    return console.log("Log Level Set");
-  },
-  setErrorCallback: (function(_this) {
-    return function(callback) {
-      return _this.errorCallback = callback;
-    };
-  })(this),
-  upgradeSystemRequirements: function() {
-    return {};
-  },
-  updateViews: function() {
-    return TBUpdateObjects();
-  },
-  getHelper: function() {
-    if (typeof jasmine === "undefined" || !jasmine || !jasmine['getEnv']) {
-      window.jasmine = {
-        getEnv: function() {}
-      };
-    }
-    this.OTHelper = this.OTHelper || OTHelpers.noConflict();
-    return this.OTHelper;
-  },
-  showError: function(a) {
-    return alert(a);
-  },
-  addEventListener: function(event, handler) {
-    return this.on(event, handler);
-  },
-  removeEventListener: function(type, handler) {
-    return this.off(type, handler);
-  }
-};
-
-window.TB = OT;
-
-window.addEventListener("orientationchange", (function() {
-  setTimeout((function() {
-    OT.updateViews();
-  }), 1000);
-}), false);
-
-var TBConnection;
-
-TBConnection = (function() {
-  function TBConnection(prop) {
-    this.connectionId = prop.connectionId;
-    this.creationTime = prop.creationTime;
-    this.data = prop.data;
-    return;
-  }
-
-  TBConnection.prototype.toJSON = function() {
-    return {
-      connectionId: this.connectionId,
-      creationTime: this.creationTime,
-      data: this.data
-    };
-  };
-
-  return TBConnection;
-
-})();
-
-var OTError;
-
-OTError = (function() {
-  var codesToTitle;
-
-  function OTError(errCode, errMsg) {
-    this.code = errCode;
-    if (errMsg != null) {
-      this.message = errMsg;
-    } else {
-      if (codesToTitle[errCode]) {
-        this.message = codesToTitle[errCode];
-      } else {
-        this.message = "OpenTok Error";
-      }
-    }
-  }
-
-  codesToTitle = {
-    1004: 'OTAuthorizationFailure',
-    1005: 'OTErrorInvalidSession',
-    1006: 'OTConnectionFailed    ',
-    1011: 'OTNullOrInvalidParameter',
-    1010: 'OTNotConnected ',
-    1015: 'OTSessionIllegalState ',
-    1503: 'OTNoMessagingServer    ',
-    1023: 'OTConnectionRefused    ',
-    1020: 'OTSessionStateFailed   ',
-    1403: 'OTP2PSessionMaxParticipants',
-    1021: 'OTSessionConnectionTimeout ',
-    2000: 'OTSessionInternalError  ',
-    1461: 'OTSessionInvalidSignalType',
-    1413: 'OTSessionSignalDataTooLong',
-    1022: 'OTConnectionDropped',
-    1112: 'OTSessionSubscriberNotFound',
-    1113: 'OTSessionPublisherNotFound',
-    0: 'OTPublisherSuccess',
-    1010: 'OTSessionDisconnected',
-    2000: 'OTPublisherInternalError',
-    1610: 'OTPublisherWebRTCError',
-    0: 'OTSubscriberSuccess$',
-    1542: 'OTConnectionTimedOut',
-    1541: 'OTSubscriberSessionDisconnected',
-    1600: 'OTSubscriberWebRTCError',
-    1604: 'OTSubscriberServerCannotFindStream',
-    2000: 'OTSubscriberInternalError'
-  };
-
-  return OTError;
-
-})();
-
-var TBEvent,
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-
-TBEvent = (function() {
-  function TBEvent(prop) {
-    this.preventDefault = __bind(this.preventDefault, this);
-    this.isDefaultPrevented = __bind(this.isDefaultPrevented, this);
-    var k, v;
-    for (k in prop) {
-      v = prop[k];
-      this[k] = v;
-    }
-    this.defaultPrevented = false;
-    return;
-  }
-
-  TBEvent.prototype.isDefaultPrevented = function() {
-    return this.defaultValue;
-  };
-
-  TBEvent.prototype.preventDefault = function() {};
-
-  return TBEvent;
-
-})();
-
-var TBError, TBGenerateDomHelper, TBGetScreenRatios, TBGetZIndex, TBSuccess, TBUpdateObjects, getPosition, pdebug, replaceWithVideoStream, streamElements;
-
-streamElements = {};
-
-getPosition = function(divName) {
-  var computedStyle, curleft, curtop, height, marginBottom, marginLeft, marginRight, marginTop, pubDiv, width;
-  pubDiv = document.getElementById(divName);
-  if (!pubDiv) {
-    return {};
-  }
-  computedStyle = window.getComputedStyle ? getComputedStyle(pubDiv, null) : {};
-  width = pubDiv.offsetWidth;
-  height = pubDiv.offsetHeight;
-  curtop = pubDiv.offsetTop;
-  curleft = pubDiv.offsetLeft;
-  while ((pubDiv = pubDiv.offsetParent)) {
-    curleft += pubDiv.offsetLeft;
-    curtop += pubDiv.offsetTop;
-  }
-  marginTop = parseInt(computedStyle.marginTop) || 0;
-  marginBottom = parseInt(computedStyle.marginBottom) || 0;
-  marginLeft = parseInt(computedStyle.marginLeft) || 0;
-  marginRight = parseInt(computedStyle.marginRight) || 0;
-  return {
-    top: curtop + marginTop,
-    left: curleft + marginLeft,
-    width: width - (marginLeft + marginRight),
-    height: height - (marginTop + marginBottom)
-  };
-};
-
-replaceWithVideoStream = function(divName, streamId, properties) {
-  var element, internalDiv, typeClass, videoElement;
-  typeClass = streamId === PublisherStreamId ? PublisherTypeClass : SubscriberTypeClass;
-  element = document.getElementById(divName);
-  element.setAttribute("class", "OT_root " + typeClass);
-  element.setAttribute("data-streamid", streamId);
-  element.style.width = properties.width + "px";
-  element.style.height = properties.height + "px";
-  element.style.overflow = "hidden";
-  element.style['background-color'] = "#000000";
-  streamElements[streamId] = element;
-  internalDiv = document.createElement("div");
-  internalDiv.setAttribute("class", VideoContainerClass);
-  internalDiv.style.width = "100%";
-  internalDiv.style.height = "100%";
-  internalDiv.style.left = "0px";
-  internalDiv.style.top = "0px";
-  videoElement = document.createElement("video");
-  videoElement.style.width = "100%";
-  videoElement.style.height = "100%";
-  internalDiv.appendChild(videoElement);
-  element.appendChild(internalDiv);
-  return element;
-};
-
-TBError = function(error) {
-  if (window.OT.errorCallback) {
-    return window.OT.errorCallback(error);
-  } else {
-    return console.error(error);
-  }
-};
-
-TBSuccess = function() {};
-
-TBUpdateObjects = function() {
-  var e, id, objects, position, ratios, streamId, _i, _len;
-  objects = document.getElementsByClassName('OT_root');
-  ratios = TBGetScreenRatios();
-  for (_i = 0, _len = objects.length; _i < _len; _i++) {
-    e = objects[_i];
-    streamId = e.dataset.streamid;
-    id = e.id;
-    position = getPosition(id);
-    Cordova.exec(TBSuccess, TBError, OTPlugin, "updateView", [streamId, position.top, position.left, position.width, position.height, TBGetZIndex(e), ratios.widthRatio, ratios.heightRatio]);
-  }
-};
-
-TBGenerateDomHelper = function() {
-  var div, domId;
-  domId = "PubSub" + Date.now();
-  div = document.createElement('div');
-  div.setAttribute('id', domId);
-  document.body.appendChild(div);
-  return domId;
-};
-
-TBGetZIndex = function(ele) {
-  var val;
-  while ((ele != null)) {
-    val = document.defaultView.getComputedStyle(ele, null).getPropertyValue('z-index');
-    if (parseInt(val)) {
-      return val;
-    }
-    ele = ele.offsetParent;
-  }
-  return 0;
-};
-
-TBGetScreenRatios = function() {
-  return {
-    widthRatio: window.outerWidth / window.innerWidth,
-    heightRatio: window.outerHeight / window.innerHeight
-  };
-};
-
-pdebug = function(msg, data) {
-  return console.log("JS Lib: " + msg + " - ", data);
-};
-
-var TBPublisher,
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-
-TBPublisher = (function() {
-  function TBPublisher(one, two, three) {
-    this.removePublisherElement = __bind(this.removePublisherElement, this);
-    this.streamDestroyed = __bind(this.streamDestroyed, this);
-    this.streamCreated = __bind(this.streamCreated, this);
-    this.eventReceived = __bind(this.eventReceived, this);
-    this.setSession = __bind(this.setSession, this);
-    var cameraName, height, name, position, publishAudio, publishVideo, ratios, width, zIndex, _ref, _ref1, _ref2, _ref3;
-    this.sanitizeInputs(one, two, three);
-    pdebug("creating publisher", {});
-    position = getPosition(this.domId);
-    name = "";
-    publishAudio = "true";
-    publishVideo = "true";
-    cameraName = "front";
-    zIndex = TBGetZIndex(document.getElementById(this.domId));
-    ratios = TBGetScreenRatios();
-    if (this.properties != null) {
-      width = (_ref = this.properties.width) != null ? _ref : position.width;
-      height = (_ref1 = this.properties.height) != null ? _ref1 : position.height;
-      name = (_ref2 = this.properties.name) != null ? _ref2 : "";
-      cameraName = (_ref3 = this.properties.cameraName) != null ? _ref3 : "front";
-      if ((this.properties.publishAudio != null) && this.properties.publishAudio === false) {
-        publishAudio = "false";
-      }
-      if ((this.properties.publishVideo != null) && this.properties.publishVideo === false) {
-        publishVideo = "false";
-      }
-    }
-    if ((width == null) || width === 0 || (height == null) || height === 0) {
-      width = DefaultWidth;
-      height = DefaultHeight;
-    }
-    this.pubElement = document.getElementById(this.domId);
-    replaceWithVideoStream(this.domId, PublisherStreamId, {
-      width: width,
-      height: height
-    });
-    position = getPosition(this.domId);
-    TBUpdateObjects();
-    OT.getHelper().eventing(this);
-    Cordova.exec(TBSuccess, TBError, OTPlugin, "initPublisher", [name, position.top, position.left, width, height, zIndex, publishAudio, publishVideo, cameraName, ratios.widthRatio, ratios.heightRatio]);
-    Cordova.exec(this.eventReceived, TBSuccess, OTPlugin, "addEvent", ["publisherEvents"]);
-  }
-
-  TBPublisher.prototype.setSession = function(session) {
-    return this.session = session;
-  };
-
-  TBPublisher.prototype.eventReceived = function(response) {
-    pdebug("publisher event received", response);
-    return this[response.eventType](response.data);
-  };
-
-  TBPublisher.prototype.streamCreated = function(event) {
-    var streamEvent;
-    pdebug("publisher streamCreatedHandler", event);
-    pdebug("publisher streamCreatedHandler", this.session);
-    pdebug("publisher streamCreatedHandler", this.session.sessionConnection);
-    this.stream = new TBStream(event.stream, this.session.sessionConnection);
-    streamEvent = new TBEvent({
-      stream: this.stream
-    });
-    this.trigger("streamCreated", streamEvent);
-    return this;
-  };
-
-  TBPublisher.prototype.streamDestroyed = function(event) {
-    var streamEvent;
-    pdebug("publisher streamDestroyed event", event);
-    streamEvent = new TBEvent({
-      stream: this.stream,
-      reason: "clientDisconnected"
-    });
-    this.trigger("streamDestroyed", streamEvent);
-    return this;
-  };
-
-  TBPublisher.prototype.removePublisherElement = function() {
-    if (this.pubElement && this.pubElement.parentNode) {
-      this.pubElement.parentNode.removeChild(this.element);
-    }
-    return this.pubElement = void 0;
-  };
-
-  TBPublisher.prototype.destroy = function() {
-    if (this.pubElement) {
-      return Cordova.exec(this.removePublisherElement, TBError, OTPlugin, "destroyPublisher", []);
-    }
-  };
-
-  TBPublisher.prototype.getImgData = function() {
-    return "";
-  };
-
-  TBPublisher.prototype.getStyle = function() {
-    return {};
-  };
-
-  TBPublisher.prototype.publishAudio = function(state) {
-    this.publishMedia("publishAudio", state);
-    return this;
-  };
-
-  TBPublisher.prototype.publishVideo = function(state) {
-    this.publishMedia("publishVideo", state);
-    return this;
-  };
-
-  TBPublisher.prototype.setCameraPosition = function(cameraPosition) {
-    pdebug("setting camera position", {
-      cameraPosition: cameraPosition
-    });
-    Cordova.exec(TBSuccess, TBError, OTPlugin, "setCameraPosition", [cameraPosition]);
-    return this;
-  };
-
-  TBPublisher.prototype.setStyle = function(style, value) {
-    return this;
-  };
-
-  TBPublisher.prototype.publishMedia = function(media, state) {
-    var publishState;
-    if (media !== "publishAudio" && media !== "publishVideo") {
-      return;
-    }
-    publishState = "true";
-    if ((state != null) && (state === false || state === "false")) {
-      publishState = "false";
-    }
-    pdebug("setting publishstate", {
-      media: media,
-      publishState: publishState
-    });
-    return Cordova.exec(TBSuccess, TBError, OTPlugin, media, [publishState]);
-  };
-
-  TBPublisher.prototype.sanitizeInputs = function(one, two, three) {
-    var position;
-    if ((three != null)) {
-      this.apiKey = one;
-      this.domId = two;
-      this.properties = three;
-    } else if ((two != null)) {
-      if (typeof two === "object") {
-        this.properties = two;
-        if (document.getElementById(one)) {
-          this.domId = one;
-        } else {
-          this.apiKey = one;
-        }
-      } else {
-        this.apiKey = one;
-        this.domId = two;
-      }
-    } else if ((one != null)) {
-      if (typeof one === "object") {
-        this.properties = one;
-      } else if (document.getElementById(one)) {
-        this.domId = one;
-      }
-    }
-    this.apiKey = this.apiKey != null ? this.apiKey : "";
-    this.properties = this.properties && typeof (this.properties === "object") ? this.properties : {};
-    if (this.domId && document.getElementById(this.domId)) {
-      if (!this.properties.width || !this.properties.height) {
-        console.log("domId exists but properties width or height is not specified");
-        position = getPosition(this.domId);
-        console.log(" width: " + position.width + " and height: " + position.height + " for domId " + this.domId + ", and top: " + position.top + ", left: " + position.left);
-        if (position.width > 0 && position.height > 0) {
-          this.properties.width = position.width;
-          this.properties.height = position.height;
-        }
-      }
-    } else {
-      this.domId = TBGenerateDomHelper();
-    }
-    this.domId = this.domId && document.getElementById(this.domId) ? this.domId : TBGenerateDomHelper();
-    return this.apiKey = this.apiKey.toString();
-  };
-
-  return TBPublisher;
-
-})();
-
-var TBSession,
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-
-TBSession = (function() {
-  TBSession.prototype.connect = function(token, connectCompletionCallback) {
-    this.token = token;
-    if (typeof connectCompletionCallback !== "function" && (connectCompletionCallback != null)) {
-      TB.showError("Session.connect() takes a token and an optional completionHandler");
-      return;
-    }
-    if ((connectCompletionCallback != null)) {
-      this.on('sessionConnected', connectCompletionCallback);
-    }
-    Cordova.exec(this.eventReceived, TBError, OTPlugin, "addEvent", ["sessionEvents"]);
-    Cordova.exec(TBSuccess, TBError, OTPlugin, "connect", [this.token]);
-  };
-
-  TBSession.prototype.disconnect = function() {
-    return Cordova.exec(TBSuccess, TBError, OTPlugin, "disconnect", []);
-  };
-
-  TBSession.prototype.forceDisconnect = function(connection) {
-    return this;
-  };
-
-  TBSession.prototype.forceUnpublish = function(stream) {
-    return this;
-  };
-
-  TBSession.prototype.getPublisherForStream = function(stream) {
-    return this;
-  };
-
-  TBSession.prototype.getSubscribersForStream = function(stream) {
-    return this;
-  };
-
-  TBSession.prototype.publish = function(divName, properties) {
-    if (this.alreadyPublishing) {
-      pdebug("Session is already publishing", {});
-      return;
-    }
-    this.alreadyPublishing = true;
-    this.publisher = new TBPublisher(divName, properties);
-    return this.publish(this.publisher);
-  };
-
-  TBSession.prototype.publish = function() {
-    if (this.alreadyPublishing) {
-      pdebug("Session is already publishing", {});
-      return;
-    }
-    this.alreadyPublishing = true;
-    if (typeof arguments[0] === "object") {
-      this.publisher = arguments[0];
-    } else {
-      this.publisher = OT.initPublisher(arguments);
-    }
-    this.publisher.setSession(this);
-    Cordova.exec(TBSuccess, TBError, OTPlugin, "publish", []);
-    return this.publisher;
-  };
-
-  TBSession.prototype.signal = function(signal, signalCompletionHandler) {
-    var data, to, type;
-    type = signal.type != null ? signal.type : "";
-    data = signal.data != null ? signal.data : "";
-    to = signal.to != null ? signal.to : "";
-    to = typeof to === "string" ? to : to.connectionId;
-    Cordova.exec(TBSuccess, TBError, OTPlugin, "signal", [type, data, to]);
-    return this;
-  };
-
-  TBSession.prototype.subscribe = function(one, two, three, four) {
-    var domId, subscriber;
-    this.subscriberCallbacks = {};
-    if ((four != null)) {
-      subscriber = new TBSubscriber(one, two, three);
-      this.subscriberCallbacks[one.streamId] = four;
-      return subscriber;
-    }
-    if ((three != null)) {
-      if ((typeof two === "string" || two.nodeType === 1) && typeof three === "object") {
-        console.log("stream, domId, props");
-        subscriber = new TBSubscriber(one, two, three);
-        return subscriber;
-      }
-      if ((typeof two === "string" || two.nodeType === 1) && typeof three === "function") {
-        console.log("stream, domId, completionHandler");
-        this.subscriberCallbacks[one.streamId] = three;
-        subscriber = new TBSubscriber(one, domId, {});
-        return subscriber;
-      }
-      if (typeof two === "object" && typeof three === "function") {
-        console.log("stream, props, completionHandler");
-        this.subscriberCallbacks[one.streamId] = three;
-        domId = TBGenerateDomHelper();
-        subscriber = new TBSubscriber(one, domId, two);
-        return subscriber;
-      }
-    }
-    if ((two != null)) {
-      if (typeof two === "string" || two.nodeType === 1) {
-        subscriber = new TBSubscriber(one, two, {});
-        return subscriber;
-      }
-      if (typeof two === "object") {
-        domId = TBGenerateDomHelper();
-        subscriber = new TBSubscriber(one, domId, two);
-        return subscriber;
-      }
-      if (typeof two === "function") {
-        this.subscriberCallbacks[one.streamId] = two;
-        domId = TBGenerateDomHelper();
-        subscriber = new TBSubscriber(one, domId, {});
-        return subscriber;
-      }
-    }
-    domId = TBGenerateDomHelper();
-    subscriber = new TBSubscriber(one, domId, {});
-    return subscriber;
-  };
-
-  TBSession.prototype.unpublish = function() {
-    var element;
-    this.alreadyPublishing = false;
-    console.log("JS: Unpublish");
-    element = document.getElementById(this.publisher.domId);
-    if (element) {
-      element.parentNode.removeChild(element);
-      TBUpdateObjects();
-    }
-    return Cordova.exec(TBSuccess, TBError, OTPlugin, "unpublish", []);
-  };
-
-  TBSession.prototype.unsubscribe = function(subscriber) {
-    var element, elementId;
-    console.log("JS: Unsubscribe");
-    elementId = subscriber.streamId;
-    element = document.getElementById("TBStreamConnection" + elementId);
-    console.log("JS: Unsubscribing");
-    element = streamElements[elementId];
-    if (element) {
-      element.parentNode.removeChild(element);
-      delete streamElements[elementId];
-      TBUpdateObjects();
-    }
-    return Cordova.exec(TBSuccess, TBError, OTPlugin, "unsubscribe", [subscriber.streamId]);
-  };
-
-  function TBSession(apiKey, sessionId) {
-    this.apiKey = apiKey;
-    this.sessionId = sessionId;
-    this.signalReceived = __bind(this.signalReceived, this);
-    this.subscribedToStream = __bind(this.subscribedToStream, this);
-    this.streamDestroyed = __bind(this.streamDestroyed, this);
-    this.streamCreated = __bind(this.streamCreated, this);
-    this.sessionDisconnected = __bind(this.sessionDisconnected, this);
-    this.sessionConnected = __bind(this.sessionConnected, this);
-    this.connectionDestroyed = __bind(this.connectionDestroyed, this);
-    this.connectionCreated = __bind(this.connectionCreated, this);
-    this.eventReceived = __bind(this.eventReceived, this);
-    this.publish = __bind(this.publish, this);
-    this.apiKey = this.apiKey.toString();
-    this.connections = {};
-    this.streams = {};
-    this.alreadyPublishing = false;
-    OT.getHelper().eventing(this);
-    Cordova.exec(TBSuccess, TBSuccess, OTPlugin, "initSession", [this.apiKey, this.sessionId]);
-  }
-
-  TBSession.prototype.cleanUpDom = function() {
-    var e, objects, _results;
-    objects = document.getElementsByClassName('OT_root');
-    _results = [];
-    while (objects.length > 0) {
-      e = objects[0];
-      if (e && e.parentNode && e.parentNode.removeChild) {
-        e.parentNode.removeChild(e);
-      }
-      _results.push(objects = document.getElementsByClassName('OT_root'));
-    }
-    return _results;
-  };
-
-  TBSession.prototype.eventReceived = function(response) {
-    pdebug("session event received", response);
-    return this[response.eventType](response.data);
-  };
-
-  TBSession.prototype.connectionCreated = function(event) {
-    var connection, connectionEvent;
-    connection = new TBConnection(event.connection);
-    connectionEvent = new TBEvent({
-      connection: connection
-    });
-    this.connections[connection.connectionId] = connection;
-    this.trigger("connectionCreated", connectionEvent);
-    return this;
-  };
-
-  TBSession.prototype.connectionDestroyed = function(event) {
-    var connection, connectionEvent;
-    pdebug("connectionDestroyedHandler", event);
-    connection = this.connections[event.connection.connectionId];
-    connectionEvent = new TBEvent({
-      connection: connection,
-      reason: "clientDisconnected"
-    });
-    this.trigger("connectionDestroyed", connectionEvent);
-    delete this.connections[connection.connectionId];
-    return this;
-  };
-
-  TBSession.prototype.sessionConnected = function(event) {
-    pdebug("sessionConnectedHandler", event);
-    this.trigger("sessionConnected");
-    this.connection = new TBConnection(event.connection);
-    this.connections[event.connection.connectionId] = this.connection;
-    event = null;
-    return this;
-  };
-
-  TBSession.prototype.sessionDisconnected = function(event) {
-    var sessionDisconnectedEvent;
-    pdebug("sessionDisconnected event", event);
-    this.alreadyPublishing = false;
-    sessionDisconnectedEvent = new TBEvent({
-      reason: event.reason
-    });
-    this.trigger("sessionDisconnected", sessionDisconnectedEvent);
-    this.cleanUpDom();
-    return this;
-  };
-
-  TBSession.prototype.streamCreated = function(event) {
-    var stream, streamEvent;
-    pdebug("streamCreatedHandler", event);
-    stream = new TBStream(event.stream, this.connections[event.stream.connectionId]);
-    this.streams[stream.streamId] = stream;
-    streamEvent = new TBEvent({
-      stream: stream
-    });
-    this.trigger("streamCreated", streamEvent);
-    return this;
-  };
-
-  TBSession.prototype.streamDestroyed = function(event) {
-    var element, stream, streamEvent;
-    pdebug("streamDestroyed event", event);
-    stream = this.streams[event.stream.streamId];
-    streamEvent = new TBEvent({
-      stream: stream,
-      reason: "clientDisconnected"
-    });
-    this.trigger("streamDestroyed", streamEvent);
-    if (stream) {
-      element = streamElements[stream.streamId];
-      if (element) {
-        if (element.parentNode) {
-          element.parentNode.removeChild(element);
-        }
-        delete streamElements[stream.streamId];
-        TBUpdateObjects();
-      }
-      delete this.streams[stream.streamId];
-    }
-    return this;
-  };
-
-  TBSession.prototype.subscribedToStream = function(event) {
-    var callbackFunc, error, streamId;
-    streamId = event.streamId;
-    callbackFunc = this.subscriberCallbacks[streamId];
-    if (callbackFunc == null) {
-      return;
-    }
-    if (event.errorCode != null) {
-      error = new OTError(event.errorCode);
-      callbackFunc(error);
-    } else {
-      callbackFunc();
-    }
-  };
-
-  TBSession.prototype.signalReceived = function(event) {
-    var streamEvent;
-    pdebug("signalReceived event", event);
-    streamEvent = new TBEvent({
-      type: event.type,
-      data: event.data,
-      from: this.connections[event.connectionId]
-    });
-    this.trigger("signal", streamEvent);
-    return this.trigger("signal:" + event.type, streamEvent);
-  };
-
-  TBSession.prototype.addEventListener = function(event, handler) {
-    this.on(event, handler);
-    return this;
-  };
-
-  TBSession.prototype.removeEventListener = function(event, handler) {
-    this.off(event, handler);
-    return this;
-  };
-
-  return TBSession;
-
-})();
-
-var TBStream;
-
-TBStream = (function() {
-  function TBStream(prop, connection) {
-    var k, v;
-    this.connection = connection;
-    for (k in prop) {
-      v = prop[k];
-      this[k] = v;
-    }
-    this.videoDimensions = {
-      width: 0,
-      height: 0
-    };
-  }
-
-  return TBStream;
-
-})();
-
-var TBSubscriber;
-
-TBSubscriber = (function() {
-  TBSubscriber.prototype.getAudioVolume = function() {
-    return 0;
-  };
-
-  TBSubscriber.prototype.getImgData = function() {
-    return "";
-  };
-
-  TBSubscriber.prototype.getStyle = function() {
-    return {};
-  };
-
-  TBSubscriber.prototype.off = function(event, handler) {
-    return this;
-  };
-
-  TBSubscriber.prototype.on = function(event, handler) {
-    return this;
-  };
-
-  TBSubscriber.prototype.setAudioVolume = function(value) {
-    return this;
-  };
-
-  TBSubscriber.prototype.setStyle = function(style, value) {
-    return this;
-  };
-
-  TBSubscriber.prototype.subscribeToAudio = function(value) {
-    return this;
-  };
-
-  TBSubscriber.prototype.subscribeToVideo = function(value) {
-    return this;
-  };
-
-  function TBSubscriber(stream, divName, properties) {
-    var divPosition, element, height, name, obj, position, ratios, subscribeToAudio, subscribeToVideo, width, zIndex, _ref;
-    element = document.getElementById(divName);
-    pdebug("creating subscriber", properties);
-    this.streamId = stream.streamId;
-    if ((properties != null) && properties.width === "100%" && properties.height === "100%") {
-      element.style.width = "100%";
-      element.style.height = "100%";
-      properties.width = "";
-      properties.height = "";
-    }
-    divPosition = getPosition(divName);
-    subscribeToVideo = "true";
-    zIndex = TBGetZIndex(element);
-    if ((properties != null)) {
-      width = properties.width || divPosition.width;
-      height = properties.height || divPosition.height;
-      name = (_ref = properties.name) != null ? _ref : "";
-      subscribeToVideo = "true";
-      subscribeToAudio = "true";
-      if ((properties.subscribeToVideo != null) && properties.subscribeToVideo === false) {
-        subscribeToVideo = "false";
-      }
-      if ((properties.subscribeToAudio != null) && properties.subscribeToAudio === false) {
-        subscribeToAudio = "false";
-      }
-    }
-    if ((width == null) || width === 0 || (height == null) || height === 0) {
-      width = DefaultWidth;
-      height = DefaultHeight;
-    }
-    obj = replaceWithVideoStream(divName, stream.streamId, {
-      width: width,
-      height: height
-    });
-    position = getPosition(obj.id);
-    ratios = TBGetScreenRatios();
-    pdebug("final subscriber position", position);
-    Cordova.exec(TBSuccess, TBError, OTPlugin, "subscribe", [stream.streamId, position.top, position.left, width, height, zIndex, subscribeToAudio, subscribeToVideo, ratios.widthRatio, ratios.heightRatio]);
-  }
-
-  TBSubscriber.prototype.removeEventListener = function(event, listener) {
-    return this;
-  };
-
-  return TBSubscriber;
-
-})();
-
-var DefaultHeight, DefaultWidth, OTPlugin, PublisherStreamId, PublisherTypeClass, StringSplitter, SubscriberTypeClass, VideoContainerClass;
-
-OTPlugin = "OpenTokPlugin";
-
-PublisherStreamId = "TBPublisher";
-
-PublisherTypeClass = "OT_publisher";
-
-SubscriberTypeClass = "OT_subscriber";
-
-VideoContainerClass = "OT_video-container";
-
-StringSplitter = "$2#9$";
-
-DefaultWidth = 264;
-
-DefaultHeight = 198;
-;/**
- * @license  Common JS Helpers on OpenTok 0.2.0 1f056b9 master
- * http://www.tokbox.com/
- *
- * Copyright (c) 2014 TokBox, Inc.
- *
- * Date: May 23 06:20:46 2014
- *
- */
-
-// OT Helper Methods
-//
-// helpers.js                           <- the root file
-// helpers/lib/{helper topic}.js        <- specialised helpers for specific tasks/topics
-//                                          (i.e. video, dom, etc)
-//
-// @example Getting a DOM element by it's id
-//  var element = OTHelpers('domId');
-//
-// @example Testing for web socket support
-//  if (OT.supportsWebSockets()) {
-//      // do some stuff with websockets
-//  }
-//
-
-/*jshint browser:true, smarttabs:true*/
-
-!(function(window, undefined) {
-
-
-  var OTHelpers = function(domId) {
-    return document.getElementById(domId);
-  };
-
-  var previousOTHelpers = window.OTHelpers;
-
-  window.OTHelpers = OTHelpers;
-
-  OTHelpers.keys = Object.keys || function(object) {
-        var keys = [], hasOwnProperty = Object.prototype.hasOwnProperty;
-        for(var key in object) {
-          if(hasOwnProperty.call(object, key)) {
-            keys.push(key);
-          }
-        }
-        return keys;
-      };
-
-  var _each = Array.prototype.forEach || function(iter, ctx) {
-        for(var idx = 0, count = this.length || 0; idx < count; ++idx) {
-          if(idx in this) {
-            iter.call(ctx, this[idx], idx);
-          }
-        }
-      };
-
-  OTHelpers.forEach = function(array, iter, ctx) {
-    return _each.call(array, iter, ctx);
-  };
-
-  var _map = Array.prototype.map || function(iter, ctx) {
-        var collect = [];
-        _each.call(this, function(item, idx) {
-          collect.push(iter.call(ctx, item, idx));
-        });
-        return collect;
-      };
-
-  OTHelpers.map = function(array, iter) {
-    return _map.call(array, iter);
-  };
-
-  var _filter = Array.prototype.filter || function(iter, ctx) {
-        var collect = [];
-        _each.call(this, function(item, idx) {
-          if(iter.call(ctx, item, idx)) {
-            collect.push(item);
-          }
-        });
-        return collect;
-      };
-
-  OTHelpers.filter = function(array, iter, ctx) {
-    return _filter.call(array, iter, ctx);
-  };
-
-  var _some = Array.prototype.some || function(iter, ctx) {
-        var any = false;
-        for(var idx = 0, count = this.length || 0; idx < count; ++idx) {
-          if(idx in this) {
-            if(iter.call(ctx, this[idx], idx)) {
-              any = true;
-              break;
-            }
-          }
-        }
-        return any;
-      };
-
-  OTHelpers.some = function(array, iter, ctx) {
-    return _some.call(array, iter, ctx);
-  };
-
-  var _indexOf = Array.prototype.indexOf || function(searchElement, fromIndex) {
-        var i,
-            pivot = (fromIndex) ? fromIndex : 0,
-            length;
-
-        if (!this) {
-          throw new TypeError();
-        }
-
-        length = this.length;
-
-        if (length === 0 || pivot >= length) {
-          return -1;
-        }
-
-        if (pivot < 0) {
-          pivot = length - Math.abs(pivot);
-        }
-
-        for (i = pivot; i < length; i++) {
-          if (this[i] === searchElement) {
-            return i;
-          }
-        }
-        return -1;
-      };
-
-  OTHelpers.arrayIndexOf = function(array, searchElement, fromIndex) {
-    return _indexOf.call(array, searchElement, fromIndex);
-  };
-
-  var _bind = Function.prototype.bind || function() {
-        var args = Array.prototype.slice.call(arguments),
-            ctx = args.shift(),
-            fn = this;
-        return function() {
-          return fn.apply(ctx, args.concat(Array.prototype.slice.call(arguments)));
-        };
-      };
-
-  OTHelpers.bind = function() {
-    var args = Array.prototype.slice.call(arguments),
-        fn = args.shift();
-    return _bind.apply(fn, args);
-  };
-
-  var _trim = String.prototype.trim || function() {
-        return this.replace(/^\s+|\s+$/g, '');
-      };
-
-  OTHelpers.trim = function(str) {
-    return _trim.call(str);
-  };
-
-  OTHelpers.noConflict = function() {
-    OTHelpers.noConflict = function() {
-      return OTHelpers;
-    };
-    window.OTHelpers = previousOTHelpers;
-    return OTHelpers;
-  };
-
-  OTHelpers.isNone = function(obj) {
-    return obj === undefined || obj === null;
-  };
-
-  OTHelpers.isObject = function(obj) {
-    return obj === Object(obj);
-  };
-
-  OTHelpers.isFunction = function(obj) {
-    return !!obj && (obj.toString().indexOf('()') !== -1 ||
-        Object.prototype.toString.call(obj) === '[object Function]');
-  };
-
-  OTHelpers.isArray = OTHelpers.isFunction(Array.isArray) && Array.isArray ||
-      function (vArg) {
-        return Object.prototype.toString.call(vArg) === '[object Array]';
-      };
-
-  OTHelpers.isEmpty = function(obj) {
-    if (obj === null || obj === undefined) return true;
-    if (OTHelpers.isArray(obj) || typeof(obj) === 'string') return obj.length === 0;
-
-    // Objects without enumerable owned properties are empty.
-    for (var key in obj) {
-      if (obj.hasOwnProperty(key)) return false;
-    }
-
-    return true;
-  };
-
-// Extend a target object with the properties from one or
-// more source objects
-//
-// @example:
-//    dest = OTHelpers.extend(dest, source1, source2, source3);
-//
-  OTHelpers.extend = function(/* dest, source1[, source2, ..., , sourceN]*/) {
-    var sources = Array.prototype.slice.call(arguments),
-        dest = sources.shift();
-
-    OTHelpers.forEach(sources, function(source) {
-      for (var key in source) {
-        dest[key] = source[key];
-      }
-    });
-
-    return dest;
-  };
-
-// Ensures that the target object contains certain defaults.
-//
-// @example
-//   var options = OTHelpers.defaults(options, {
-//     loading: true     // loading by default
-//   });
-//
-  OTHelpers.defaults = function(/* dest, defaults1[, defaults2, ..., , defaultsN]*/) {
-    var sources = Array.prototype.slice.call(arguments),
-        dest = sources.shift();
-
-    OTHelpers.forEach(sources, function(source) {
-      for (var key in source) {
-        if (dest[key] === void 0) dest[key] = source[key];
-      }
-    });
-
-    return dest;
-  };
-
-  OTHelpers.clone = function(obj) {
-    if (!OTHelpers.isObject(obj)) return obj;
-    return OTHelpers.isArray(obj) ? obj.slice() : OTHelpers.extend({}, obj);
-  };
-
-
-
-// Handy do nothing function
-  OTHelpers.noop = function() {};
-
-// Returns true if the client supports WebSockets, false otherwise.
-  OTHelpers.supportsWebSockets = function() {
-    return 'WebSocket' in window;
-  };
-
-// Returns the number of millisceonds since the the UNIX epoch, this is functionally
-// equivalent to executing new Date().getTime().
-//
-// Where available, we use 'performance.now' which is more accurate and reliable,
-// otherwise we default to new Date().getTime().
-  OTHelpers.now = (function() {
-    var performance = window.performance || {},
-        navigationStart,
-        now =  performance.now       ||
-            performance.mozNow    ||
-            performance.msNow     ||
-            performance.oNow      ||
-            performance.webkitNow;
-
-    if (now) {
-      now = OTHelpers.bind(now, performance);
-      navigationStart = performance.timing.navigationStart;
-
-      return  function() { return navigationStart + now(); };
-    } else {
-      return function() { return new Date().getTime(); };
-    }
-  })();
-
-  var _browser = function() {
-    var userAgent = window.navigator.userAgent.toLowerCase(),
-        appName = window.navigator.appName,
-        navigatorVendor,
-        browser = 'unknown',
-        version = -1;
-
-    if (userAgent.indexOf('opera') > -1 || userAgent.indexOf('opr') > -1) {
-      browser = 'Opera';
-
-      if (/opr\/([0-9]{1,}[\.0-9]{0,})/.exec(userAgent) !== null) {
-        version = parseFloat( RegExp.$1 );
-      }
-
-    } else if (userAgent.indexOf('firefox') > -1)   {
-      browser = 'Firefox';
-
-      if (/firefox\/([0-9]{1,}[\.0-9]{0,})/.exec(userAgent) !== null) {
-        version = parseFloat( RegExp.$1 );
-      }
-
-    } else if (appName === 'Microsoft Internet Explorer') {
-      // IE 10 and below
-      browser = 'IE';
-
-      if (/msie ([0-9]{1,}[\.0-9]{0,})/.exec(userAgent) !== null) {
-        version = parseFloat( RegExp.$1 );
-      }
-
-    } else if (appName === 'Netscape' && userAgent.indexOf('trident') > -1) {
-      // IE 11+
-
-      browser = 'IE';
-
-      if (/trident\/.*rv:([0-9]{1,}[\.0-9]{0,})/.exec(userAgent) !== null) {
-        version = parseFloat( RegExp.$1 );
-      }
-
-    } else if (userAgent.indexOf('chrome') > -1) {
-      browser = 'Chrome';
-
-      if (/chrome\/([0-9]{1,}[\.0-9]{0,})/.exec(userAgent) !== null) {
-        version = parseFloat( RegExp.$1 );
-      }
-
-    } else if ((navigatorVendor = window.navigator.vendor) &&
-        navigatorVendor.toLowerCase().indexOf('apple') > -1) {
-      browser = 'Safari';
-
-      if (/version\/([0-9]{1,}[\.0-9]{0,})/.exec(userAgent) !== null) {
-        version = parseFloat( RegExp.$1 );
-      }
-    }
-
-    return {
-      browser: browser,
-      version: version,
-      iframeNeedsLoad: userAgent.indexOf('webkit') < 0
-    };
-  }();
-
-  OTHelpers.browser = function() {
-    return _browser.browser;
-  };
-
-  OTHelpers.browserVersion = function() {
-    return _browser;
-  };
-
-
-  OTHelpers.canDefineProperty = true;
-
-  try {
-    Object.defineProperty({}, 'x', {});
-  } catch (err) {
-    OTHelpers.canDefineProperty = false;
-  }
-
-// A helper for defining a number of getters at once.
-//
-// @example: from inside an object
-//   OTHelpers.defineGetters(this, {
-//     apiKey: function() { return _apiKey; },
-//     token: function() { return _token; },
-//     connected: function() { return this.is('connected'); },
-//     capabilities: function() { return _socket.capabilities; },
-//     sessionId: function() { return _sessionId; },
-//     id: function() { return _sessionId; }
-//   });
-//
-  OTHelpers.defineGetters = function(self, getters, enumerable) {
-    var propsDefinition = {};
-
-    if (enumerable === void 0) enumerable = false;
-
-    for (var key in getters) {
-      propsDefinition[key] = {
-        get: getters[key],
-        enumerable: enumerable
-      };
-    }
-
-    OTHelpers.defineProperties(self, propsDefinition);
-  };
-
-  var generatePropertyFunction = function(object, getter, setter) {
-    if(getter && !setter) {
-      return function() {
-        return getter.call(object);
-      };
-    } else if(getter && setter) {
-      return function(value) {
-        if(value !== void 0) {
-          setter.call(object, value);
-        }
-        return getter.call(object);
-      };
-    } else {
-      return function(value) {
-        if(value !== void 0) {
-          setter.call(object, value);
-        }
-      };
-    }
-  };
-
-  OTHelpers.defineProperties = function(object, getterSetters) {
-    for (var key in getterSetters) {
-      object[key] = generatePropertyFunction(object, getterSetters[key].get,
-          getterSetters[key].set);
-    }
-  };
-
-
-// Polyfill Object.create for IE8
-//
-// See https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/create
-//
-  if (!Object.create) {
-    Object.create = function (o) {
-      if (arguments.length > 1) {
-        throw new Error('Object.create implementation only accepts the first parameter.');
-      }
-      function F() {}
-      F.prototype = o;
-      return new F();
-    };
-  }
-
-  OTHelpers.setCookie = function(key, value) {
-    try {
-      localStorage.setItem(key, value);
-    } catch (err) {
-      // Store in browser cookie
-      var date = new Date();
-      date.setTime(date.getTime()+(365*24*60*60*1000));
-      var expires = '; expires=' + date.toGMTString();
-      document.cookie = key + '=' + value + expires + '; path=/';
-    }
-  };
-
-  OTHelpers.getCookie = function(key) {
-    var value;
-
-    try {
-      value = localStorage.getItem('opentok_client_id');
-      return value;
-    } catch (err) {
-      // Check browser cookies
-      var nameEQ = key + '=';
-      var ca = document.cookie.split(';');
-      for(var i=0;i < ca.length;i++) {
-        var c = ca[i];
-        while (c.charAt(0) === ' ') {
-          c = c.substring(1,c.length);
-        }
-        if (c.indexOf(nameEQ) === 0) {
-          value = c.substring(nameEQ.length,c.length);
-        }
-      }
-
-      if (value) {
-        return value;
-      }
-    }
-
-    return null;
-  };
-
-
-// These next bits are included from Underscore.js. The original copyright
-// notice is below.
-//
-// http://underscorejs.org
-// (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
-// (c) 2011-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
-// Underscore may be freely distributed under the MIT license.
-
-  // Invert the keys and values of an object. The values must be serializable.
-  OTHelpers.invert = function(obj) {
-    var result = {};
-    for (var key in obj) if (obj.hasOwnProperty(key)) result[obj[key]] = key;
-    return result;
-  };
-
-
-  // List of HTML entities for escaping.
-  var entityMap = {
-    escape: {
-      '&':  '&amp;',
-      '<':  '&lt;',
-      '>':  '&gt;',
-      '"':  '&quot;',
-      '\'': '&#x27;',
-      '/':  '&#x2F;'
-    }
-  };
-
-  entityMap.unescape = OTHelpers.invert(entityMap.escape);
-
-  // Regexes containing the keys and values listed immediately above.
-  var entityRegexes = {
-    escape:   new RegExp('[' + OTHelpers.keys(entityMap.escape).join('') + ']', 'g'),
-    unescape: new RegExp('(' + OTHelpers.keys(entityMap.unescape).join('|') + ')', 'g')
-  };
-
-  // Functions for escaping and unescaping strings to/from HTML interpolation.
-  OTHelpers.forEach(['escape', 'unescape'], function(method) {
-    OTHelpers[method] = function(string) {
-      if (string === null || string === undefined) return '';
-      return ('' + string).replace(entityRegexes[method], function(match) {
-        return entityMap[method][match];
-      });
-    };
-  });
-
-// By default, Underscore uses ERB-style template delimiters, change the
-// following template settings to use alternative delimiters.
-  OTHelpers.templateSettings = {
-    evaluate    : /<%([\s\S]+?)%>/g,
-    interpolate : /<%=([\s\S]+?)%>/g,
-    escape      : /<%-([\s\S]+?)%>/g
-  };
-
-// When customizing `templateSettings`, if you don't want to define an
-// interpolation, evaluation or escaping regex, we need one that is
-// guaranteed not to match.
-  var noMatch = /(.)^/;
-
-// Certain characters need to be escaped so that they can be put into a
-// string literal.
-  var escapes = {
-    '\'':     '\'',
-    '\\':     '\\',
-    '\r':     'r',
-    '\n':     'n',
-    '\t':     't',
-    '\u2028': 'u2028',
-    '\u2029': 'u2029'
-  };
-
-  var escaper = /\\|'|\r|\n|\t|\u2028|\u2029/g;
-
-// JavaScript micro-templating, similar to John Resig's implementation.
-// Underscore templating handles arbitrary delimiters, preserves whitespace,
-// and correctly escapes quotes within interpolated code.
-  OTHelpers.template = function(text, data, settings) {
-    var render;
-    settings = OTHelpers.defaults({}, settings, OTHelpers.templateSettings);
-
-    // Combine delimiters into one regular expression via alternation.
-    var matcher = new RegExp([
-          (settings.escape || noMatch).source,
-          (settings.interpolate || noMatch).source,
-          (settings.evaluate || noMatch).source
-        ].join('|') + '|$', 'g');
-
-    // Compile the template source, escaping string literals appropriately.
-    var index = 0;
-    var source = '__p+=\'';
-    text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
-      source += text.slice(index, offset)
-          .replace(escaper, function(match) { return '\\' + escapes[match]; });
-
-      if (escape) {
-        source += '\'+\n((__t=(' + escape + '))==null?\'\':OTHelpers.escape(__t))+\n\'';
-      }
-      if (interpolate) {
-        source += '\'+\n((__t=(' + interpolate + '))==null?\'\':__t)+\n\'';
-      }
-      if (evaluate) {
-        source += '\';\n' + evaluate + '\n__p+=\'';
-      }
-      index = offset + match.length;
-      return match;
-    });
-    source += '\';\n';
-
-    // If a variable is not specified, place data values in local scope.
-    if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
-
-    source = 'var __t,__p=\'\',__j=Array.prototype.join,' +
-        'print=function(){__p+=__j.call(arguments,\'\');};\n' +
-        source + 'return __p;\n';
-
-    try {
-      // evil is necessary for the new Function line
-      /*jshint evil:true */
-      render = new Function(settings.variable || 'obj', source);
-    } catch (e) {
-      e.source = source;
-      throw e;
-    }
-
-    if (data) return render(data);
-    var template = function(data) {
-      return render.call(this, data);
-    };
-
-    // Provide the compiled function source as a convenience for precompilation.
-    template.source = 'function(' + (settings.variable || 'obj') + '){\n' + source + '}';
-
-    return template;
-  };
-
-})(window);
-
-/*jshint browser:true, smarttabs:true*/
-
-// tb_require('../../helpers.js')
-
-(function(window, OTHelpers, undefined) {
-
-  OTHelpers.statable = function(self, possibleStates, initialState, stateChanged,
-                                stateChangedFailed) {
-    var previousState,
-        currentState = self.currentState = initialState;
-
-    var setState = function(state) {
-      if (currentState !== state) {
-        if (OTHelpers.arrayIndexOf(possibleStates, state) === -1) {
-          if (stateChangedFailed && OTHelpers.isFunction(stateChangedFailed)) {
-            stateChangedFailed('invalidState', state);
-          }
-          return;
-        }
-
-        self.previousState = previousState = currentState;
-        self.currentState = currentState = state;
-        if (stateChanged && OTHelpers.isFunction(stateChanged)) stateChanged(state, previousState);
-      }
-    };
-
-
-    // Returns a number of states and returns true if the current state
-    // is any of them.
-    //
-    // @example
-    // if (this.is('connecting', 'connected')) {
-    //   // do some stuff
-    // }
-    //
-    self.is = function (/* state0:String, state1:String, ..., stateN:String */) {
-      return OTHelpers.arrayIndexOf(arguments, currentState) !== -1;
-    };
-
-
-    // Returns a number of states and returns true if the current state
-    // is none of them.
-    //
-    // @example
-    // if (this.isNot('connecting', 'connected')) {
-    //   // do some stuff
-    // }
-    //
-    self.isNot = function (/* state0:String, state1:String, ..., stateN:String */) {
-      return OTHelpers.arrayIndexOf(arguments, currentState) === -1;
-    };
-
-    return setState;
-  };
-
-})(window, window.OTHelpers);
-
-/*!
- *  This is a modified version of Robert Kieffer awesome uuid.js library.
- *  The only modifications we've made are to remove the Node.js specific
- *  parts of the code and the UUID version 1 generator (which we don't
- *  use). The original copyright notice is below.
- *
- *     node-uuid/uuid.js
- *
- *     Copyright (c) 2010 Robert Kieffer
- *     Dual licensed under the MIT and GPL licenses.
- *     Documentation and details at https://github.com/broofa/node-uuid
- */
-// tb_require('../helpers.js')
-
-/*global crypto:true, Uint32Array:true, Buffer:true */
-/*jshint browser:true, smarttabs:true*/
-
-(function(window, OTHelpers, undefined) {
-
-  // Unique ID creation requires a high quality random # generator, but
-  // Math.random() does not guarantee "cryptographic quality".  So we feature
-  // detect for more robust APIs, normalizing each method to return 128-bits
-  // (16 bytes) of random data.
-  var mathRNG, whatwgRNG;
-
-  // Math.random()-based RNG.  All platforms, very fast, unknown quality
-  var _rndBytes = new Array(16);
-  mathRNG = function() {
-    var r, b = _rndBytes, i = 0;
-
-    for (i = 0; i < 16; i++) {
-      if ((i & 0x03) === 0) r = Math.random() * 0x100000000;
-      b[i] = r >>> ((i & 0x03) << 3) & 0xff;
-    }
-
-    return b;
-  };
-
-  // WHATWG crypto-based RNG - http://wiki.whatwg.org/wiki/Crypto
-  // WebKit only (currently), moderately fast, high quality
-  if (window.crypto && crypto.getRandomValues) {
-    var _rnds = new Uint32Array(4);
-    whatwgRNG = function() {
-      crypto.getRandomValues(_rnds);
-
-      for (var c = 0 ; c < 16; c++) {
-        _rndBytes[c] = _rnds[c >> 2] >>> ((c & 0x03) * 8) & 0xff;
-      }
-      return _rndBytes;
-    };
-  }
-
-  // Select RNG with best quality
-  var _rng = whatwgRNG || mathRNG;
-
-  // Buffer class to use
-  var BufferClass = typeof(Buffer) == 'function' ? Buffer : Array;
-
-  // Maps for number <-> hex string conversion
-  var _byteToHex = [];
-  var _hexToByte = {};
-  for (var i = 0; i < 256; i++) {
-    _byteToHex[i] = (i + 0x100).toString(16).substr(1);
-    _hexToByte[_byteToHex[i]] = i;
-  }
-
-  // **`parse()` - Parse a UUID into it's component bytes**
-  function parse(s, buf, offset) {
-    var i = (buf && offset) || 0, ii = 0;
-
-    buf = buf || [];
-    s.toLowerCase().replace(/[0-9a-f]{2}/g, function(oct) {
-      if (ii < 16) { // Don't overflow!
-        buf[i + ii++] = _hexToByte[oct];
-      }
-    });
-
-    // Zero out remaining bytes if string was short
-    while (ii < 16) {
-      buf[i + ii++] = 0;
-    }
-
-    return buf;
-  }
-
-  // **`unparse()` - Convert UUID byte array (ala parse()) into a string**
-  function unparse(buf, offset) {
-    var i = offset || 0, bth = _byteToHex;
-    return  bth[buf[i++]] + bth[buf[i++]] +
-        bth[buf[i++]] + bth[buf[i++]] + '-' +
-        bth[buf[i++]] + bth[buf[i++]] + '-' +
-        bth[buf[i++]] + bth[buf[i++]] + '-' +
-        bth[buf[i++]] + bth[buf[i++]] + '-' +
-        bth[buf[i++]] + bth[buf[i++]] +
-        bth[buf[i++]] + bth[buf[i++]] +
-        bth[buf[i++]] + bth[buf[i++]];
-  }
-
-  // **`v4()` - Generate random UUID**
-
-  // See https://github.com/broofa/node-uuid for API details
-  function v4(options, buf, offset) {
-    // Deprecated - 'format' argument, as supported in v1.2
-    var i = buf && offset || 0;
-
-    if (typeof(options) == 'string') {
-      buf = options == 'binary' ? new BufferClass(16) : null;
-      options = null;
-    }
-    options = options || {};
-
-    var rnds = options.random || (options.rng || _rng)();
-
-    // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
-    rnds[6] = (rnds[6] & 0x0f) | 0x40;
-    rnds[8] = (rnds[8] & 0x3f) | 0x80;
-
-    // Copy bytes to buffer, if provided
-    if (buf) {
-      for (var ii = 0; ii < 16; ii++) {
-        buf[i + ii] = rnds[ii];
-      }
-    }
-
-    return buf || unparse(rnds);
-  }
-
-  // Export public API
-  var uuid = v4;
-  uuid.v4 = v4;
-  uuid.parse = parse;
-  uuid.unparse = unparse;
-  uuid.BufferClass = BufferClass;
-
-  // Export RNG options
-  uuid.mathRNG = mathRNG;
-  uuid.whatwgRNG = whatwgRNG;
-
-  OTHelpers.uuid = uuid;
-
-}(window, window.OTHelpers));
-/*jshint browser:true, smarttabs:true*/
-
-// tb_require('../helpers.js')
-
-(function(window, OTHelpers, undefined) {
-
-  OTHelpers.useLogHelpers = function(on){
-
-    // Log levels for OTLog.setLogLevel
-    on.DEBUG    = 5;
-    on.LOG      = 4;
-    on.INFO     = 3;
-    on.WARN     = 2;
-    on.ERROR    = 1;
-    on.NONE     = 0;
-
-    var _logLevel = on.NONE,
-        _logs = [],
-        _canApplyConsole = true;
-
-    try {
-      Function.prototype.bind.call(window.console.log, window.console);
-    } catch (err) {
-      _canApplyConsole = false;
-    }
-
-    // Some objects can't be logged in the console, mostly these are certain
-    // types of native objects that are exposed to JS. This is only really a
-    // problem with IE, hence only the IE version does anything.
-    var makeLogArgumentsSafe = function(args) { return args; };
-
-    if (OTHelpers.browser() === 'IE') {
-      makeLogArgumentsSafe = function(args) {
-        return [toDebugString(Array.prototype.slice.apply(args))];
-      };
-    }
-
-    // Generates a logging method for a particular method and log level.
-    //
-    // Attempts to handle the following cases:
-    // * the desired log method doesn't exist, call fallback (if available) instead
-    // * the console functionality isn't available because the developer tools (in IE)
-    // aren't open, call fallback (if available)
-    // * attempt to deal with weird IE hosted logging methods as best we can.
-    //
-    function generateLoggingMethod(method, level, fallback) {
-      return function() {
-        if (on.shouldLog(level)) {
-          var cons = window.console,
-              args = makeLogArgumentsSafe(arguments);
-
-          // In IE, window.console may not exist if the developer tools aren't open
-          // This also means that cons and cons[method] can appear at any moment
-          // hence why we retest this every time.
-          if (cons && cons[method]) {
-            // the desired console method isn't a real object, which means
-            // that we can't use apply on it. We force it to be a real object
-            // using Function.bind, assuming that's available.
-            if (cons[method].apply || _canApplyConsole) {
-              if (!cons[method].apply) {
-                cons[method] = Function.prototype.bind.call(cons[method], cons);
-              }
-
-              cons[method].apply(cons, args);
-            }
-            else {
-              // This isn't the same result as the above, but it's better
-              // than nothing.
-              cons[method](args);
-            }
-          }
-          else if (fallback) {
-            fallback.apply(on, args);
-
-            // Skip appendToLogs, we delegate entirely to the fallback
-            return;
-          }
-
-          appendToLogs(method, makeLogArgumentsSafe(arguments));
-        }
-      };
-    }
-
-    on.log = generateLoggingMethod('log', on.LOG);
-
-    // Generate debug, info, warn, and error logging methods, these all fallback to on.log
-    on.debug = generateLoggingMethod('debug', on.DEBUG, on.log);
-    on.info = generateLoggingMethod('info', on.INFO, on.log);
-    on.warn = generateLoggingMethod('warn', on.WARN, on.log);
-    on.error = generateLoggingMethod('error', on.ERROR, on.log);
-
-
-    on.setLogLevel = function(level) {
-      _logLevel = typeof(level) === 'number' ? level : 0;
-      on.debug("TB.setLogLevel(" + _logLevel + ")");
-      return _logLevel;
-    };
-
-    on.getLogs = function() {
-      return _logs;
-    };
-
-    // Determine if the level is visible given the current logLevel.
-    on.shouldLog = function(level) {
-      return _logLevel >= level;
-    };
-
-    // Format the current time nicely for logging. Returns the current
-    // local time.
-    function formatDateStamp() {
-      var now = new Date();
-      return now.toLocaleTimeString() + now.getMilliseconds();
-    }
-
-    function toJson(object) {
-      try {
-        return JSON.stringify(object);
-      } catch(e) {
-        return object.toString();
-      }
-    }
-
-    function toDebugString(object) {
-      var components = [];
-
-      if (typeof(object) === 'undefined') {
-        // noop
-      }
-      else if (object === null) {
-        components.push('NULL');
-      }
-      else if (OTHelpers.isArray(object)) {
-        for (var i=0; i<object.length; ++i) {
-          components.push(toJson(object[i]));
-        }
-      }
-      else if (OTHelpers.isObject(object)) {
-        for (var key in object) {
-          var stringValue;
-
-          if (!OTHelpers.isFunction(object[key])) {
-            stringValue = toJson(object[key]);
-          }
-          else if (object.hasOwnProperty(key)) {
-            stringValue = 'function ' + key + '()';
-          }
-
-          components.push(key + ': ' + stringValue);
-        }
-      }
-      else if (OTHelpers.isFunction(object)) {
-        try {
-          components.push(object.toString());
-        } catch(e) {
-          components.push('function()');
-        }
-      }
-      else  {
-        components.push(object.toString());
-      }
-
-      return components.join(", ");
-    }
-
-    // Append +args+ to logs, along with the current log level and the a date stamp.
-    function appendToLogs(level, args) {
-      if (!args) return;
-
-      var message = toDebugString(args);
-      if (message.length <= 2) return;
-
-      _logs.push(
-          [level, formatDateStamp(), message]
-      );
-    }
-  };
-
-  OTHelpers.useLogHelpers(OTHelpers);
-  OTHelpers.setLogLevel(OTHelpers.ERROR);
-
-})(window, window.OTHelpers);
-
-/*jshint browser:true, smarttabs:true*/
-
-// tb_require('../helpers.js')
-
-(function(window, OTHelpers, undefined) {
-
-  OTHelpers.castToBoolean = function(value, defaultValue) {
-    if (value === undefined) return defaultValue;
-    return value === 'true' || value === true;
-  };
-
-  OTHelpers.roundFloat = function(value, places) {
-    return Number(value.toFixed(places));
-  };
-
-})(window, window.OTHelpers);
-/*jshint browser:true, smarttabs:true*/
-
-// tb_require('../helpers.js')
-// tb_require('../vendor/uuid.js')
-
-(function(window, OTHelpers, undefined) {
-
-  var timeouts = [],
-      messageName = 'OTHelpers.' + OTHelpers.uuid.v4() + '.zero-timeout';
-
-  var handleMessage = function(event) {
-    if (event.data === messageName) {
-      if(OTHelpers.isFunction(event.stopPropagation)) {
-        event.stopPropagation();
-      }
-      event.cancelBubble = true;
-      if (timeouts.length > 0) {
-        var args = timeouts.shift(),
-            fn = args.shift();
-
-        fn.apply(null, args);
-      }
-    }
-  };
-
-  if(window.addEventListener) {
-    window.addEventListener('message', handleMessage, true);
-  } else if(window.attachEvent) {
-    window.attachEvent('onmessage', handleMessage);
-  }
-
-  // Calls the function +fn+ asynchronously with the current execution.
-  // This is most commonly used to execute something straight after
-  // the current function.
-  //
-  // Any arguments in addition to +fn+ will be passed to +fn+ when it's
-  // called.
-  //
-  // You would use this inplace of setTimeout(fn, 0) type constructs. callAsync
-  // is preferable as it executes in a much more predictable time window,
-  // unlike setTimeout which could execute anywhere from 2ms to several thousand
-  // depending on the browser/context.
-  //
-  OTHelpers.callAsync = function (/* fn, [arg1, arg2, ..., argN] */) {
-    timeouts.push(Array.prototype.slice.call(arguments));
-    window.postMessage(messageName, '*');
-  };
-
-
-  // Wraps +handler+ in a function that will execute it asynchronously
-  // so that it doesn't interfere with it's exceution context if it raises
-  // an exception.
-  OTHelpers.createAsyncHandler = function(handler) {
-    return function() {
-      var args = Array.prototype.slice.call(arguments);
-
-      OTHelpers.callAsync(function() {
-        handler.apply(null, args);
-      });
-    };
-  };
-
-})(window, window.OTHelpers);
-
-/*jshint browser:true, smarttabs:true*/
-/*global jasmine:true*/
-
-// tb_require('../../helpers.js')
-// tb_require('../callbacks.js')
-
-(function(window, OTHelpers, undefined) {
-
-  /**
-   * This base class defines the <code>on</code>, <code>once</code>, and <code>off</code>
-   * methods of objects that can dispatch events.
-   *
-   * @class EventDispatcher
+@font-face {
+    font-family: 'HelveticaNeueLTStd-Roman';
+    src: url('fonts/HelveticaNeueLTStd-Roman.eot');
+    src: url('fonts/HelveticaNeueLTStd-Roman.eot?#iefix') format('embedded-opentype'),
+    url('fonts/HelveticaNeueLTStd-Roman.woff') format('woff'),
+    url('fonts/HelveticaNeueLTStd-Roman.ttf') format('truetype'),
+    url('fonts/HelveticaNeueLTStd-Roman.otf') format('opentype'),
+    url('fonts/HelveticaNeueLTStd-Roman.svg#HelveticaNeueLTStd-Roman') format('svg');
+    font-weight: 400;
+    font-style: normal;
+    font-stretch: normal;
+    unicode-range: U+0020-FB02;
+}
+
+@font-face {
+    font-family: 'HelveticaNeueLTStd-Md';
+    src: url('fonts/HelveticaNeueLTStd-Md.eot');
+    src: url('fonts/HelveticaNeueLTStd-Md.eot?#iefix') format('embedded-opentype'),
+    url('fonts/HelveticaNeueLTStd-Md.woff') format('woff'),
+    url('fonts/HelveticaNeueLTStd-Md.ttf') format('truetype'),
+    url('fonts/HelveticaNeueLTStd-Md.otf') format('opentype'),
+    url('fonts/HelveticaNeueLTStd-Md.svg#HelveticaNeueLTStd-Md') format('svg');
+    font-weight: 500;
+    font-style: normal;
+    font-stretch: normal;
+    unicode-range: U+0020-FB02;
+}
+
+html, body {
+    background: transparent !important;
+}
+
+.gm-content, body {
+    background: #ccc9d1 url(../img/home-bg.png) no-repeat center top;
+    background: url("../images/background.png") repeat-y center top;
+    background: #FFF;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Roman', Helvetica, Arial, 'Lucida Grande', sans-serif;
+    background-size: 100%;
+    color: #5d5d5d;
+    /* padding-top: 5px; */
+    height: 100%;
+    padding: 0;
+    margin: 0;
+}
+.gm-content.scroll-content{
+    height: auto;
+}
+
+/*#screen {*/
+    /*width: 100% !important;*/
+    /*height: 100% !important;*/
+    /*background: #EEE;*/
+/*}*/
+
+/*#screen .OT_root.OT_subscriber {*/
+    /*width: 100% !important;*/
+    /*height: 100vh !important;*/
+/*}*/
+
+.gm-content.transparent {
+    background: transparent;
+}
+
+.gm-content.vertical-align-center {
+    display: flex;
+    align-items: center;
+}
+
+.pane {
+    background: transparent;
+}
+
+.page {
+    max-width: 680px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    min-height: 480px;
+}
+
+a:hover {
+    text-decoration: none
+}
+
+a:focus {
+    outline: none;
+    text-decoration: none
+}
+
+ul.main-menu {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    text-align: center;
+    font-size: 30px;
+    font-family: 'gotham-light';
+}
+
+ul.main-menu li {
+    padding: 10px 0 14px 0
+}
+
+ul.main-menu li a {
+    padding: 10px 0;
+    color: #fff
+}
+
+ul.main-menu li a:hover, ul.main-menu li a:focus, ul.main-menu li a.active {
+    font-family: 'gotham-medium';
+    color: #e61b52;
+}
+
+.slider-thumb img {
+    width: 12vw;
+    max-width: none;
+    height: 12vw;
+    border-radius: 50%;
+    border: 0.53vw solid white;
+    box-shadow: 0 3px 9px rgba(0, 0, 0, 0.2);
+    transition: all .15s ease-in-out;
+    transform: scale(1);
+}
+.slider-thumb li.active img {
+    border-color: #e61b52;
+}
+
+.slider-thumb {
+    padding-bottom: 10px;
+    padding-top: 0px;
+}
+
+.slider-thumb ul {
+    padding: 0;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin: 0;
+    list-style: none;
+    text-align: center
+}
+
+.slider-thumb ul li {
+    display: inline-block;
+    margin: 0;
+}
+
+.slider-thumb ul li a {
+    padding: 2px;
+    display: block;
+    border-radius: 50%;
+    -moz-border-radius: 50%;
+    -webkit-border-radius: 50%;
+}
+
+.slider-thumb ul li a {
+    border: solid 2px #FFF;
+    padding: 0;
+}
+
+.play-container .slider-thumb ul li a {
+    border-color: transparent;
+}
+
+.slider-thumb ul li a.active {
+    /*border: solid 2px #e61b52;*/
+    padding: 0;
+}
+
+.carousel-discover2 .slider-thumb ul li a, .carousel-discover1 .slider-thumb ul li a {
+    opacity: .7;
+    filter: alpha(opacity=70);
+}
+
+.carousel-discover2 .slider-thumb ul li a.active, .carousel-discover1 .slider-thumb ul li a.active {
+    opacity: 1;
+    filter: alpha(opacity=100);
+}
+
+h2 {
+    color: #e61b52;
+    font-size: 48px;
+    padding: 0;
+    margin: 0;
+    text-align: center
+}
+
+p {
+    text-align: center
+}
+
+.slide img {
+    box-shadow: 1px 0 5px 1px rgba(0, 0, 0, .25);
+    border-radius: 10px;
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
+}
+
+.bg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background: -moz-linear-gradient(top, rgba(0, 0, 0, .8) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(39%, rgba(0, 0, 0, 0)), color-stop(61%, rgba(0, 0, 0, 0)), color-stop(78%, rgba(0, 0, 0, 0)), color-stop(100%, rgba(0, 0, 0, 1)));
+    background: -webkit-linear-gradient(top, rgba(0, 0, 0, 0) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    background: -o-linear-gradient(top, rgba(0, 0, 0, 0) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    background: -ms-linear-gradient(top, rgba(0, 0, 0, 0) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#00515151', endColorstr='#515151', GradientType=0);
+    border-radius: 6px;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px
+}
+
+.bg.no-radius {
+    border-radius: 0;
+    -moz-border-radius: 0;
+    -webkit-border-radius: 0
+}
+
+.slide span.bg .name {
+    position: absolute;
+    bottom: 5px;
+    color: #fff;
+    font-size: 25px;
+    left: 15px;
+    z-index: 1
+}
+
+.carousel-discover1 {
+    padding-bottom: 15px
+}
+
+.carousel-discover1.preloader {
+    margin-top: 130px;
+}
+
+/*.carousel-discover2 {*/
+/*margin-top: 27px;}*/
+.progress-bar-block {
+    background-color: #383838;
+    border-radius: 6px;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    height: 34px;
+    position: relative;
+    box-shadow: 0 0 2px 1px rgba(0, 0, 0, .3);
+    margin-top: 10px;
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.progress {
+    background-color: #e61b52;
+    border-radius: 6px;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    height: 34px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 40%;
+    text-transform: uppercase;
+    color: #383838;
+    padding: 0 0 0 20px;
+    line-height: 34px;
+    font-size: 17px;
+}
+
+.caption-conainer-view {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    background-color: rgba(0, 0, 0, .85);
+    height: 100%;
+    width: 100%;
+    padding: 12px;
+    border-radius: 6px;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+}
+
+.caption-conainer-view h3 {
+    font-size: 15px;
+    text-transform: uppercase;
+    border-bottom: solid 1px #e1e1e1;
+    color: #fff;
+    padding: 0 0 5px 0;
+    margin: 0;
+    font-size: 15px
+}
+
+.caption-conainer-view ul {
+    list-style: none;
+    padding: 10px 0 0 0;
+    margin: 0
+}
+
+.caption-conainer-view ul li {
+    text-align: center;
+    padding: 1px 0;
+    font-size: 15px
+}
+
+.caption-conainer-view ul li a {
+    color: #fff;
+    font-family: 'gotham-book'
+}
+
+.caption-conainer-view ul li a.active, .caption-conainer-view ul li a:hover, .caption-conainer-view ul li a:focus {
+    color: #e61b52;
+}
+
+.info-controls {
+    position: absolute;
+    right: 15px;
+    top: 47%
+}
+
+.info-controls ul.pager {
+    padding: 0;
+    margin: 0;
+    list-style: none
+}
+
+.info-controls ul.pager li {
+    padding: 0 0 10px 0;
+    margin: 0;
+    list-style: none;
+    display: block
+}
+
+.info-controls ul.pager li a {
+    display: block;
+    width: 12px;
+    height: 12px;
+    background-color: #333535;
+    border-radius: 8px;
+    -moz-border-radius: 8px;
+    -webkit-border-radius: 8px;
+    text-indent: -9999px;
+    border: 0;
+    padding: 4px
+}
+
+.info-controls ul.pager li a.active {
+    background-color: #e61b52;
+}
+
+.japan-flag {
+    background: url(../img/flag-japan.png) no-repeat;
+    background-size: 100%;
+    width: 66px;
+    height: 49px;
+    margin: 0 auto;
+}
+
+.selected-slide {
+    border-color: #20b767 !important;
+    overflow: hidden;
+    position: relative
+}
+
+.icon-selected {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    z-index: 999;
+    background: url(../img/selected-check-icon.png) no-repeat center;
+    background-size: 60px 60px
+}
+
+.select-arrow-left {
+    left: -75px;
+    background-position: left center;
+    background-image: none;
+}
+
+.remove-slide {
+    border-color: #e61b52 !important;
+    overflow: hidden;
+    position: relative;
+}
+
+.icon-remove {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    z-index: 999;
+    background: url(../img/remove-slide-icon.png) no-repeat center;
+    background-size: 60px 60px
+}
+
+.remove-arrow-right {
+    right: -75px;
+    background-position: right center;
+    left: auto;
+    background-image: none;
+}
+
+.remove-slide-view {
+    margin: 60px 50px 30px 50px
+}
+
+.slide {
+    transition: all linear 0.3s;
+    position: relative;
+}
+
+.accept-slide {
+    /* margin-left: 75px
    */
-  OTHelpers.eventing = function(self, syncronous) {
-    var _events = {};
+}
 
+.reject-slide {
+    right: 75px
+}
 
-    // Call the defaultAction, passing args
-    function executeDefaultAction(defaultAction, args) {
-      if (!defaultAction) return;
+.accept-slide img, .reject-slide img {
+    opacity: .5 !important;
+    filter: alpha(opacity=50);
+}
 
-      defaultAction.apply(null, args.slice());
+.tick-txt {
+    position: absolute;
+    width: 100%;
+    left: 55px;
+    text-align: center;
+    font-size: 36px;
+    color: #20b767;
+    /* height: 100%; */
+    top: 35%
+}
+
+.cross-txt {
+    position: absolute;
+    width: 100%;
+    right: 55px;
+    text-align: center;
+    font-size: 36px;
+    color: #e61b52;
+    /* height: 100%; */
+    top: 35%
+}
+
+.title-block {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.title-block p {
+    color: #232326
+}
+
+.video-chat-countdown {
+    padding: 0;
+    text-align: center
+}
+
+.video-chat-countdown p {
+    color: #fff;
+    font-size: 14px;
+}
+
+.video-chat-countdown .time {
+    font-size: 84px;
+    color: #e61b52;
+    line-height: 90px;
+}
+
+.hint {
+    padding: 10px 0 0 0;
+}
+
+.hint span {
+    color: #e61b52
+}
+
+.info-icon {
+    background: url(../img/exc-icon.png) no-repeat;
+    width: 30px;
+    height: 30px;
+    position: absolute;
+    z-index: 1000;
+    text-indent: -9999px;
+    top: 20px;
+    left: 25px;
+    background-size: 100%
+}
+
+.OT_widget-container {
+    margin-left: -27px;
+}
+
+.chat-call-bg {
+    position: absolute;
+    height: 200px;
+    bottom: 0;
+    width: 100%;
+    left: 0;
+    background: -moz-linear-gradient(top, rgba(30, 87, 153, 0) 0%, rgba(0, 0, 0, 0.86) 100%);
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, rgba(30, 87, 153, 0)), color-stop(100%, rgba(0, 0, 0, 0.86)));
+    background: -webkit-linear-gradient(top, rgba(30, 87, 153, 0) 0%, rgba(0, 0, 0, 0.86) 100%);
+    background: -o-linear-gradient(top, rgba(30, 87, 153, 0) 0%, rgba(0, 0, 0, 0.86) 100%);
+    background: -ms-linear-gradient(top, rgba(30, 87, 153, 0) 0%, rgba(0, 0, 0, 0.86) 100%);
+    background: linear-gradient(to bottom, rgba(30, 87, 153, 0) 0%, rgba(0, 0, 0, 0.86) 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#001e5799', endColorstr='#db000000', GradientType=0);
+}
+
+.end-call-btn {
+    background: url(../img/end-call-icon.png) no-repeat;
+    width: 86px;
+    height: 86px;
+    background-size: 100%;
+    margin: 50px auto;
+    display: block
+}
+
+.relative {
+    position: relative
+}
+
+.message {
+    padding: 10px 0
+}
+
+.message p {
+    font-size: 15px;
+    text-transform: uppercase
+}
+
+ul.chat-info-type {
+    padding: 0;
+    margin: 0 20px;
+    list-style: none;
+    border-top: solid 1px #d4d4d4
+}
+
+ul.chat-info-type li {
+    border-bottom: solid 1px #d4d4d4;
+    position: relative;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+    font-size: 15px
+}
+
+ul.chat-info-type li a {
+    display: block;
+    padding: 10px 10px 10px 45px;
+    color: #8f8f8f
+}
+
+ul.chat-info-type li a:hover, ul.chat-info-type li a:focus {
+    color: #e61b52
+}
+
+ul.chat-info-type li a span.icon {
+    position: absolute;
+    left: 15px;
+    top: 15px;
+    background: url(../img/chat-info-icon.png) no-repeat;
+    display: block;
+    background-size: 24px;
+    height: 136px
+}
+
+ul.chat-info-type li a span.icon.inapp-video {
+    background-position: 0 0;
+    width: 24px;
+    height: 30px;
+}
+
+ul.chat-info-type li a span.icon.inapp-chat {
+    background-position: 0 -39px;
+    width: 24px;
+    height: 32px;
+    top: 10px
+}
+
+ul.chat-info-type li a span.icon.spam {
+    background-position: 0 -78px;
+    width: 24px;
+    height: 32px;
+    top: 10px
+}
+
+ul.chat-info-type li a span.icon.other-reasons {
+    background-position: 0 -117px;
+    width: 24px;
+    height: 32px;
+    top: 10px
+}
+
+.btn-in-block {
+    text-align: center;
+    padding: 10px 0 20px 0
+}
+
+.modal-body {
+    padding: 0;
+    background-color: #f1f1f1;
+    border-radius: 8px;
+    overflow: hidden
+}
+
+.icon-head {
+    box-shadow: 0 4px 9px -5px rgba(0, 0, 0, .2);
+    background-color: #fff;
+    padding: 10px 0
+}
+
+.icon-head .info-ticker {
+    background: url(../img/info-tick-icon.png) no-repeat;
+    width: 47px;
+    height: 47px;
+    background-size: 100%;
+    margin: 0px auto
+}
+
+.modal-full {
+    margin: 0 40px;
+    top: 40px;
+    position: absolute
+}
+
+.detailed-report-block {
+    padding: 25px 0;
+    text-align: center;
+    color: #8f8f8f;
+    font-size: 17px;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+.form-control.field-report {
+    border: 0;
+    border-bottom: solid 1px #ccc;
+    background-color: #f0f0f0;
+    border-radius: 0;
+    -moz-border-radius: 0;
+    -webkit-border-radius: 0;
+    box-shadow: none
+}
+
+.send-card-block {
+    border: solid 2px #e61b52;
+    border-radius: 50px;
+    -moz-border-radius: 50px;
+    -webkit-border-radius: 50px;
+    overflow: hidden;
+    width: 70px;
+    height: 70px;
+    margin: 0 auto
+}
+
+.chat-mess-age {
+    border: 0;
+    background: none;
+}
+
+.chat-mess-age::-webkit-input-placeholder {
+    font-size: 15px;
+}
+
+.chat-mess-age::-moz-placeholder {
+    font-size: 15px
+}
+
+/* firefox 19+ */
+.chat-mess-age:-ms-input-placeholder {
+    font-size: 15px
+}
+
+/* ie */
+
+.chat-mess-age-block {
+    padding: 25px 0;
+    text-align: center;
+    color: #8f8f8f;
+    font-size: 17px;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+    border-bottom: solid 1px #a3a3a3;
+    margin-left: 30px;
+    margin-right: 30px
+}
+
+.chat-mess-age-block .quote {
+    color: #e61b52;
+    font-size: 20px;
+    font-family: 'gotham-bold';
+    font-weight: 700
+}
+
+.contact-card-opt {
+    text-align: center;
+    padding: 65px 0 45px 0
+}
+
+.contact-card-opt ul {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    display: inline-block
+}
+
+.contact-card-opt ul li {
+    display: inline-block;
+    margin: 10px
+}
+
+.contact-card-opt ul li a {
+    display: block;
+    width: 51px;
+    height: 51px;
+    text-indent: -9999px
+}
+
+.contact-card-opt ul li a.loc-pin {
+    background: url(../img/loc-pin-icon.png) no-repeat;
+    background-size: 100%;
+}
+
+.contact-card-opt ul li a.call {
+    background: url(../img/call-icon.png) no-repeat;
+    background-size: 100%;
+}
+
+.btn-in-block ul {
+    padding: 0;
+    margin: 0;
+    list-style: none
+}
+
+.btn-in-block ul li {
+    display: inline-block;
+    margin: 0 10px
+}
+
+.btn-primary {
+    background-color: #e61b52;
+    border: 0;
+    padding: 8px 15px;
+    border-radius: 20px;
+    -moz-border-radius: 20px;
+    -webkit-border-radius: 20px;
+    font-size: 16px;
+    min-width: 120px
+}
+
+.btn-default {
+    background-color: #dcdcdc;
+    border: 0;
+    padding: 8px 15px;
+    border-radius: 20px;
+    -moz-border-radius: 20px;
+    -webkit-border-radius: 20px;
+    text-transform: uppercase;
+    font-size: 16px;
+    color: #8f8f8f;
+    min-width: 120px
+}
+
+a.btn-default:hover, a .btn-default:focus {
+    color: #8f8f8f;
+    background-color: #cccbcb;
+}
+.transparent{
+    background: transparent !important;
+}
+#v-subscribe{
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    z-index:1;
+    background: url("../img/loader.gif") no-repeat 50% 50%;
+}
+#v-publisher{
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    z-index:2;
+    width: 80px;
+    height:100px;
+    outline: 1px solid #fff;
+    background: url("../img/loader.gif") no-repeat 50% 50%;
+}
+.call_container_black{
+    background: #000000;
+}
+.call-opt {
+    position: absolute;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    bottom: 70px;
+    left: 0;
+    width: 100%;
+}
+
+.call-opt li {
+    position: absolute;
+    z-index: 11;
+}
+
+.call-opt li a {
+    text-indent: -9999px;
+    display: block;
+}
+
+.call-opt li.drop-icon {
+}
+
+.call-opt li.drop-icon a {
+    background: url(../img/drop-icon.png) no-repeat;
+    width: 30px;
+    height: 41px;
+    background-size: 100%;
+    margin-left: 35px;
+}
+
+.call-opt li.report-icon {
+  left:0;
+}
+
+.call-opt li.report-icon a {
+  background: url(../img/lock.png) no-repeat;
+  width: 65px;
+  height: 41px;
+  background-size: 100%;
+}
+
+.call-opt li.call-icon {
+    left:50%;
+    margin-left: -33px;
+}
+
+.call-opt li.call-icon a {
+    background: url(../img/ph-icon.png) no-repeat;
+    width: 65px;
+    height: 41px;
+    background-size: 100%;
+    margin: 0 auto
+}
+
+.call-opt li.timer-icon {
+    right: 0;
+}
+
+/*.call-opt li.timer-icon a {*/
+    /*background: url(../img/timer-icon.png) no-repeat;*/
+    /*width: 36px;*/
+    /*height: 41px;*/
+    /*background-size: 100%;*/
+    /*display: block;*/
+    /*margin-right: 35px;*/
+/*}*/
+
+.settings.contact-settings ion-item span.fb {
+    background-image: url('../img/facebook.png') !important;
+    background-repeat: no-repeat !important;
+}
+
+.settings.contact-settings ion-item span.whatsapp {
+    background-image: url('../img/whatsapp.png') !important;
+    background-repeat: no-repeat !important;
+}
+
+.settings.contact-settings ion-item span.email {
+    background-image: url('../img/email.png') !important;
+    background-repeat: no-repeat !important;
+}
+
+.settings.contact-settings ion-item span.twitter {
+    background-image: url('../img/twitter.png') !important;
+    background-repeat: no-repeat !important;
+}
+
+.settings.contact-settings ion-item span.instagram {
+    background-image: url('../img/instagram.png') !important;
+    background-repeat: no-repeat !important;
+}
+
+.send-card-opt {
+    text-align: center;
+    padding: 25px 0 15px 0
+}
+
+.send-card-opt ul {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    display: inline-block
+}
+
+.send-card-opt ul li {
+    display: inline-block;
+    margin: 10px 5px 5px 5px;
+}
+
+.send-card-opt ul li a {
+    background: url(../img/pickcontact-card.png) no-repeat;
+    display: block;
+    width: 50px;
+    height: 50px;
+    text-indent: -9999px;
+    border: solid 2px #8f8f8f;
+    border-radius: 50px;
+    -moz-border-radius: 50px;
+    -webkit-border-radius: 50px;
+    background-size: 235px 169px
+}
+
+.send-card-opt ul li a:hover, .send-card-opt ul li a:focus, .send-card-opt ul li a.active {
+    background-color: #e61b52;
+    border-color: #e61b52
+}
+
+.send-card-opt ul li a.twitter-icon {
+    background-position: 10px -71px;
+}
+
+.send-card-opt ul li a.twitter-icon:hover, .send-card-opt ul li a.twitter-icon:focus, .send-card-opt ul li a.twitter-icon.active {
+    background-position: 10px 14px;
+}
+
+.send-card-opt ul li a.fb-icon {
+    background-position: -59px -72px;
+}
+
+.send-card-opt ul li a.fb-icon:hover, .send-card-opt ul li a.fb-icon:focus, .send-card-opt ul li a.fb-icon.active {
+    background-position: -59px 14px;
+}
+
+.send-card-opt ul li a.call-icon {
+    background-position: -131px -72px;
+}
+
+.send-card-opt ul li a.call-icon:hover, .send-card-opt ul li a.call-icon:focus, .send-card-opt ul li a.call-icon.active {
+    background-position: -131px 14px;
+}
+
+.send-card-opt ul li a.bell-icon {
+    background-position: -201px -72px;
+}
+
+.send-card-opt ul li a.bell-icon:hover, .send-card-opt ul li a.bell-icon:focus, .send-card-opt ul li a.bell-icon.active {
+    background-position: -201px 14px;
+}
+
+.send-card-opt ul li a.save-icon {
+    background-position: 9px -113px;
+}
+
+.send-card-opt ul li a.save-icon:hover, .send-card-opt ul li a.save-icon:focus, .send-card-opt ul li a.save-icon.active {
+    background-position: 9px -29px;
+}
+
+.send-card-opt ul li a.pin-icon {
+    background-position: -61px -114px;
+}
+
+.send-card-opt ul li a.pin-icon:hover, .send-card-opt ul li a.pin-icon:focus, .send-card-opt ul li a.pin-icon.active {
+    background-position: -61px -29px;
+}
+
+.send-card-opt ul li a.whatsapp-icon {
+    background-position: -130px -114px;
+}
+
+.send-card-opt ul li a.whatsapp-icon:hover, .send-card-opt ul li a.whatsapp-icon:focus, .send-card-opt ul li a.whatsapp-icon.active {
+    background-position: -130px -29px;
+}
+
+.send-card-opt ul li a.email-icon {
+    background-position: -201px -114px;
+}
+
+.send-card-opt ul li a.email-icon:hover, .send-card-opt ul li a.email-icon:focus, .send-card-opt ul li a.email-icon.active {
+    background-position: -201px -29px;
+}
+
+.holder {
+    width: 100%;
+}
+
+.pocket-head .pocket-icon {
+    background: url(../img/pocket-icon.png) no-repeat;
+    width: 47px;
+    height: 47px;
+    background-size: 100%;
+    margin: 0px auto
+}
+
+.pocket-head .settings-icon {
+    background: url(../img/settings-icon.png) no-repeat;
+    width: 47px;
+    height: 47px;
+    background-size: 100%;
+    margin: 0px auto;
+    margin-bottom: 15px;
+}
+
+.pocket-slides {
+    padding: 0 35px 20px 10px
+}
+
+.pocket-slides .slide {
+    margin-bottom: 15px;
+    transition: all linear 0.3s;
+    width: 100%;
+    height: auto;
+}
+
+.sort-by-letter {
+    position: relative;
+    right: -2%;
+    text-align: right;
+    float: right;
+}
+
+.sort-by-letter ul {
+    padding: 0;
+    margin: 0;
+    list-style: none
+}
+
+.sort-by-letter ul li a {
+    display: block;
+    padding: 3px 5px;
+    color: #e61b52
+}
+
+.text-head {
+    right: 0;
+    float: right;
+    padding-right: 25px;
+    padding-left: 25px;
+    padding-bottom: 10px;
+    color: #f10950;
+    font-size: 17px;
+}
+
+.pocket-container {
+    background-color: #f0f0f0;
+    min-height: 100vh;
+}
+
+.pocket-container-mb-55 {
+    margin-bottom: 55px;
+}
+
+.pocket-container-mb-95 {
+    margin-bottom: 95px;
+}
+
+.pocket-close-icon {
+    background: url(../img/close-icon-pocket.png) no-repeat;
+    width: 58px;
+    height: 58px;
+    background-size: 100%;
+    position: absolute;
+    float: right;
+    top: 25%;
+    top: calc(50% - 39px);
+    right: 50%;
+    right: calc(50% - 29px);
+    z-index: 10;
+}
+
+.pocket-slide-swap {
+    left: -100px
+}
+
+.search-block {
+    position: relative;
+    top: 9px;
+    background-color: #e1e1e1;
+    border-radius: 6px;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    padding: 2px;
+    height: 38px;
+    margin: 20px 20px;
+    padding: 2px 20px 2px 100px
+}
+
+.search-filed {
+    border: 0;
+    background-color: transparent;
+    box-shadow: none;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+    font-size: 16px;
+    position: absolute;
+    width: 80%;
+    left: 5%;
+}
+
+.search-btn {
+    position: absolute;
+    right: 5%;
+    top: 30%;
+    text-indent: -9999px;
+    background: url(../img/search-icon.png) no-repeat;
+    width: 14px;
+    height: 14px;
+    background-size: 100%
+}
+
+.send-card-opt.pocket-options ul {
+    left: 0;
+    top: 20%;
+    width: 100%;
+    max-width: 220px;
+    margin: 0 auto;
+}
+
+.send-card-opt.pocket-options ul li a {
+    border-color: #fff;
+    width: 45px;
+    height: 45px
+}
+
+.send-card-opt.pocket-options ul li a.call-icon {
+    background-position: -133px 11px;
+}
+
+.send-card-opt.pocket-options ul li a.call-icon:hover, .send-card-opt.pocket-options ul li a.call-icon:focus, .send-card-opt.pocket-options ul li a.call-icon.active {
+    background-position: -133px 11px;
+}
+
+.send-card-opt.pocket-options ul li a.pin-icon {
+    background-position: -63px -31px;
+}
+
+.send-card-opt.pocket-options ul li a.pin-icon:hover, .send-card-opt.pocket-options ul li a.pin-icon:focus, .send-card-opt.pocket-options ul li a.pin-icon.active {
+    background-position: -63px -31px;
+}
+
+.send-card-opt.pocket-options ul li a.bell-icon {
+    background-position: -204px 11px;
+}
+
+.send-card-opt.pocket-options ul li a.bell-icon:hover, .send-card-opt.pocket-options ul li a.bell-icon:focus, .send-card-opt.pocket-options ul li a.bell-icon.active {
+    background-position: -204px 11px;
+}
+
+.send-card-opt.pocket-options ul li a.twitter-icon {
+    background-position: 8px 11px;
+}
+
+.send-card-opt.pocket-options ul li a.twitter-icon:hover, .send-card-opt.pocket-options ul li a.twitter-icon:focus, .send-card-opt.pocket-options ul li a.twitter-icon.active {
+    background-position: 8px 11px;
+}
+
+.send-card-opt.pocket-options ul li a.fb-icon {
+    background-position: -62px 11px;
+}
+
+.send-card-opt.pocket-options ul li a.fb-icon:hover, .send-card-opt.pocket-options ul li a.fb-icon:focus, .send-card-opt.pocket-options ul li a.fb-icon.active {
+    background-position: -62px 11px;
+}
+
+.send-card-opt.pocket-options ul li a.save-icon {
+    background-position: 7px -31px;
+}
+
+.send-card-opt.pocket-options ul li a.save-icon:hover, .send-card-opt.pocket-options ul li a.save-icon:focus, .send-card-opt.pocket-options ul li a.save-icon.active {
+    background-position: 7px -31px;
+}
+
+.send-card-opt.pocket-options ul li a.whatsapp-icon {
+    background-position: -133px -31px;
+}
+
+.send-card-opt.pocket-options ul li a.whatsapp-icon:hover, .send-card-opt.pocket-options ul li a.whatsapp-icon:focus, .send-card-opt.pocket-options ul li a.whatsapp-icon.active {
+    background-position: -133px -31px;
+}
+
+.send-card-opt.pocket-options ul li a.email-icon {
+    background-position: -204px -31px;
+}
+
+.send-card-opt.pocket-options ul li a.email-icon:hover, .send-card-opt.pocket-options ul li a.email-icon:focus, .send-card-opt.pocket-options ul li a.email-icon.active {
+    background-position: -204px -31px;
+}
+
+.head-title {
+    text-align: center;
+    padding: 10px 0 0;
+    color: #e61b52;
+    position: relative;
+    top: -10px;
+}
+
+.head-title-pocket {
+    top: 5px;
+}
+
+.head-title span {
+    left: 0;
+    white-space: nowrap;
+    /*-webkit-transition: all 0.3s;
+      transition: all 0.3s;*/
+}
+
+.prevSlide .head-title span,
+.head-title-prev span,
+.nextSlide .head-title span,
+.head-title-next span {
+    position: absolute;
+    left: -50px;
+    color: #8f8f8f
+}
+
+.prevSlide .head-title span,
+.head-title-prev span {
+    left: auto;
+    left: 90%;
+}
+
+body.settings {
+    background: #f1f1f1
+}
+
+.settings ul li a.add2 {
+    color: #8f8f8f
+}
+
+.settings ul {
+    padding: 0 0 0 0;
+    margin: 0;
+    list-style: none;
+}
+
+.settings ul.bad-things {
+    padding-top: 7vw;
+    padding-bottom: 4vw;
+}
+.settings ul.bad-things p.small-text{
+    margin-bottom: 2.66vw;
+}
+
+.settings ul.bad-things li {
+    border-top: 1px solid #c8c7cc;
+    border-bottom: 1px solid #c8c7cc;
+}
+
+.settings ul.left-list {
+    background: white;
+    padding-left: 4.26vw;
+    padding-top: 0;
+    margin-top: 7.86vw;
+    border-top: 1px solid #c8c7cc;
+    border-bottom: 1px solid #c8c7cc;
+}
+
+.settings .left-list-security .list {
+    border-top: 1px solid #c8c7cc;
+    border-bottom: 1px solid #c8c7cc;
+}
+
+.settings .left-list-security .list .selection__content {
+    font-size: 4.66vw;
+}
+
+.settings ul.left-list.looking {
+    margin-top: 17px;
+}
+
+.list-block-selection .list {
+    padding: 1px 0;
+}
+
+.list-block-selection .item {
+    background-color: #fff;
+    margin-bottom: 1px;
+}
+
+.list-block-selection .item .item-content {
+    padding: 10px 0 10px 0;
+}
+
+.item.add-more {
+    padding: 0;
+}
+
+.settings ul.left-list li {
+    padding-left: 0;
+}
+
+.left-list span {
+    position: relative;
+    top: -4px;
+}
+
+.settings ul li {
+    background-color: #fff;
+    padding: 0;
+    height: 11.73vw;
+    line-height: 11.73vw;
+    border-bottom: solid 1px #e6e6e6;
+    font-size: 4.66vw;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+}
+
+.settings ul li:last-child {
+    border-bottom: none;
+}
+
+.settings--discovery ul li {
+    overflow: hidden;
+    line-height: 37px;
+    padding-bottom: 0;
+}
+
+.settings ul li a {
+    color: #5d5d5d
+}
+
+.settings ul li a:hover, .settings ul li a:focus, .settings ul li a.active {
+    color: #e61b52
+}
+
+.settings .list-block li.add-more a:hover, .settings .list-block li.add-more a:focus, .settings .list-block li.add-more a.active {
+    color: #e61b52
+}
+
+a.deactivate-account-link {
+    text-align: center;
+    color: #a7a7a7;
+    padding: 0;
+    font-size: 4.66vw;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+    display: block;
+    line-height: normal;
+}
+
+a.deactivate-account-link:hover, a.deactivate-account-link:focus {
+    color: #5d5d5d
+}
+
+.label-title {
+    position: relative;
+    top: 10px;
+    padding: 15px 20px 0;
+    width: 100%;
+    font-size: 14px;
+    color: #7a7a7f;
+    overflow: hidden;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+}
+
+.label-title--first {
+    padding-top: 20px;
+}
+
+.label-title .pull-right {
+    font-size: 4.26vw;
+    color: #424242;
+}
+
+.settings.contact-settings li {
+    position: relative;
+    padding: 20px 0px 20px 70px
+}
+
+.settings.contact-settings li span.icon {
+    position: absolute;
+    left: 15px;
+    top: 12px;
+    background: url(../img/settings-contact-card@2x.png) no-repeat;
+    display: block;
+    background-size: 100%;
+    height: 136px;
+    width: 41px;
+    height: 41px;
+}
+
+.item-content {
+    border: none;
+}
+
+.settings.contact-settings ion-item {
+    border: none;
+    /* border-bottom: #000 solid 2px*/
+}
+
+.settings.contact-settings ion-item input {
+    margin-left: 50px;
+    font-size: 18px;
+    color: #5d5d5d;
+    width: 75%;
+}
+
+.settings.contact-settings ion-item span.icon {
+    position: absolute;
+    left: 15px;
+    top: 12px;
+    background: url(../img/settings-contact-card@2x.png) no-repeat;
+    display: block;
+    background-size: 100%;
+    height: 136px;
+    width: 41px;
+    height: 41px;
+}
+
+.contact-settings ion-item span.icon.loc-pin {
+    background-position: 0 -65px;
+}
+
+.contact-settings ion-item span.icon.bell-icon {
+    background-position: 0 -131px;
+}
+
+.contact-settings ion-item span.icon.add-more {
+    background-position: 0 -196px;
+}
+
+.contact-settings li span.icon.loc-pin {
+    background-position: 0 -65px;
+}
+
+.contact-settings li span.icon.bell-icon {
+    background-position: 0 -131px;
+}
+
+.contact-settings li span.icon.add-more {
+    background-position: 0 -196px;
+}
+
+.settings {
+    padding-bottom: 40px;
+    max-width: 749px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.settings .slider-thumb li {
+    border-bottom: 0;
+    padding: 0;
+    border-radius: 50%;
+    position: relative;
+    width: 12.53vw;
+    height: 12.53vw;
+    text-align: center;
+    line-height: normal;
+    overflow: visible;
+    margin-right: 5.06vw;
+}
+.settings .slider-thumb li:last-child {
+    margin-right: 0;
+}
+
+.settings .slider-thumb {
+    padding: 0;
+    margin: 0;
+    margin-top: 10px;
+    background-color: #fff
+}
+
+.settings .slider-thumb--pictures {
+    margin-top: 2.66vw;
+    max-height: none;
+    overflow: hidden;
+    padding: 2vw 0;
+}
+
+.settings .slider-thumb li.active a {
+    padding: 0;
+    position: absolute;
+    overflow: hidden;
+}
+
+.settings .slider-thumb li.deleted {
+    -webkit-animation: listItemDeleted 0.5s forwards;
+    animation: listItemDeleted 0.5s forwards;
+    overflow: hidden;
+}
+
+.pro-pic-bg {
+    display: none;
+}
+
+.settings .slider-thumb li.active a .pro-pic-bg {
+    background-color: rgba(230, 27, 82, .5);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border-radius:50%;
+    -moz-border-radius: 50%;
+    -webkit-border-radius: 50%;
+    display: block;
+}
+
+.settings .slider-thumb li .cross-icon {
+    background-image: url(../img/cross-icon.png);
+    background-repeat: no-repeat;
+    width: 12vw;
+    height: 12vw;
+    background-size: 4vw;
+    background-position: center;
+    display: block;
+    margin: 0;
+}
+
+.settings .slider-thumb li.add {
+    border: solid 0.53vw #e1e1e1;
+    font-size: inherit;
+    border-radius: 50%;
+    width: 12vw;
+    height: 12vw;
+    position: relative;
+    background-image: url(../img/plus-sign.png);
+    background-repeat: no-repeat;
+    background-size: 3vw;
+    background-position: center;
+}
+
+.settings .slider-thumb li.add a {
+    color: #e1e1e1;
+    display: block;
+    text-indent: -9999px;
+    height: 12px;
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    width: 12px;
+    border: none;
+}
+
+.image-pop {
+    -webkit-animation: imagePop 0.3s;
+    animation: imagePop 0.3s;
+    margin: 0 auto;
+    max-width: 150%;
+    position: absolute;
+}
+
+.deleted img {
+    -webkit-animation: imageDeleted 0.5s forwards;
+    animation: imageDeleted 0.5s forwards;
+    margin: 0 auto;
+    /*width: 0;*/
+}
+
+@keyframes imagePop {
+    0% {
+        width: 100%;
+        top: 0%;
+        left: 0%;
+    }
+    50% {
+        width: 110%;
+        top: -5%;
+        left: -5%;
+    }
+    100% {
+        width: 100%;
+        top: 0%;
+        left: 0%;
+    }
+}
+
+@-webkit-keyframes imagePop {
+    0% {
+        width: 100%;
+        top: 0%;
+        left: 0%;
+    }
+    50% {
+        width: 110%;
+        top: -5%;
+        left: -5%;
+    }
+    100% {
+        width: 100%;
+        top: 0%;
+        left: 0%;
+    }
+}
+
+@keyframes imageDeleted {
+    0% {
+        width: 100%;
+    }
+    50% {
+        width: 70%;
+    }
+    100% {
+        width: 0%;
+    }
+}
+
+@-webkit-keyframes imageDeleted {
+    0% {
+        width: 100%;
+    }
+    50% {
+        width: 70%;
+    }
+    100% {
+        width: 0%;
+    }
+}
+
+@keyframes listItemDeleted {
+    0% {
+        width: 54px;
+    }
+    50% {
+        width: 50px;
+        padding: 0;
+        margin: 0;
+    }
+    99% {
+        position: relative;
+    }
+    100% {
+        width: 0%;
+        padding: 0;
+        margin: 0;
+        display: none;
+        position: absolute;
+    }
+}
+
+@-webkit-keyframes listItemDeleted {
+    0% {
+        width: 54px;
+    }
+    50% {
+        width: 54px;
+    }
+    99% {
+        position: relative;
+    }
+    100% {
+        width: 0%;
+        padding: 0;
+        margin: 0;
+        position: absolute;
+    }
+}
+
+.settings .slider-thumb li.add span {
+    color: #e1e1e1;
+    background: url(../img/plus-sign.png) no-repeat;
+    width: 12px;
+    height: 12px;
+    background-size: 100%;
+    margin: 0 auto;
+    display: block;
+    text-indent: -9999px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-top: -6px;
+    margin-left: -6px;
+}
+
+.settings .slider-thumb li.add a:focus {
+    text-decoration: none
+}
+
+.profile-title {
+    padding: 25px 15px 5px 15px
+}
+
+.settings ul.sub-menu {
+    padding: 0;
+    margin: 0;
+    float: right;
+}
+
+.settings ul.sub-menu li {
+    float: left;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    position: relative
+}
+
+.settings ul.sub-menu li a.menu {
+    float: left;
+    padding: 10px 0;
+    margin: 0;
+    background: url(../img/reorder-control.png) no-repeat;
+    width: 22px;
+    height: 9px;
+    background-size: 100%;
+    text-indent: -9999px;
+    margin-right: 10px;
+    margin-top: 8px
+}
+
+.settings ul.sub-menu li a.delete {
+    background-color: #e61b52;
+    color: #fff;
+    padding: 12px 5px;
+    margin-right: -10px;
+}
+
+.settings li.add-more a {
+    color: #aeaeae
+}
+
+.profile-note {
+    padding: 10px 30px;
+    text-align: center;
+    font-size: 13px;
+    font-family: 'gotham-book'
+}
+
+.video-chat .modal-backdrop {
+    background-color: transparent
+}
+
+.slideElement {
+    width: 100%;
+    /*height: 157px;*/
+    margin-bottom: 5%;
+    overflow: hidden;
+    height: auto;
+    position: relative;
+}
+
+.modal.in .modal-dialog {
+    -webkit-transform: translate(0, 15%);
+    -ms-transform: translate(0, 15%);
+    -o-transform: translate(0, 15%);
+    transform: translate(0, 15%);
+}
+
+.pocket-icons {
+    display: none;
+}
+
+.animate-show.ng-hide-add, .animate-show.ng-hide-remove {
+    transition: all linear 0.5s;
+    display: block !important;
+}
+
+.animate-show.ng-hide-add.ng-hide-add-active, .animate-show.ng-hide-remove {
+    opacity: 0;
+}
+
+.animate-show.ng-hide-add, .animate-show.ng-hide-remove.ng-hide-remove-active {
+    opacity: 1;
+}
+
+.slide.accept-slide img.accept-button {
+    max-width: 60px;
+    box-shadow: none;
+    border-radius: 0;
+    opacity: 1 !important;
+    position: relative;
+    top: 9%;
+}
+
+.slide.reject-slide img.reject-button {
+    max-width: 60px;
+    box-shadow: none;
+    border-radius: 0;
+    opacity: 1 !important;
+    position: relative;
+    top: 9%;
+    left: 80%;
+}
+
+.slides {
+    display: inline-block;
+    position: relative;
+}
+
+.alpha_sidebar {
+    position: absolute;
+    right: 10px;
+    z-index: 100;
+    transition: all linear 0.3s;
+}
+
+.alpha_sidebar li {
+    color: #e61b52;
+    margin-bottom: 2px;
+    cursor: pointer;
+}
+
+/*.modal {*/
+/*background-color: transparent;*/
+/*}*/
+
+/*.modal-backdrop {*/
+/*position: fixed;*/
+/*top: 0;*/
+/*right: 0;*/
+/*bottom: 0;*/
+/*left: 0;*/
+/*z-index: 0;*/
+/*background-color: #000;*/
+/*}*/
+
+.imgbg:before {
+    position: absolute;
+    content: "";
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background: -moz-linear-gradient(top, rgba(0, 0, 0, .8) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(39%, rgba(0, 0, 0, 0)), color-stop(61%, rgba(0, 0, 0, 0)), color-stop(78%, rgba(0, 0, 0, 0)), color-stop(100%, rgba(0, 0, 0, 1)));
+    background: -webkit-linear-gradient(top, rgba(0, 0, 0, 0) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    background: -o-linear-gradient(top, rgba(0, 0, 0, 0) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    background: -ms-linear-gradient(top, rgba(0, 0, 0, 0) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 69%, rgba(0, 0, 0, 0) 31%, rgba(0, 0, 0, 0) 8%, rgba(0, 0, 0, 1) 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#00515151', endColorstr='#515151', GradientType=0);
+}
+
+.facebookButton {
+    position: absolute;
+    bottom: 20%;
+    text-align: center;
+    width: 100%;
+}
+
+.facebookButton a {
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    padding: 10px 15px;
+    border-radius: 20px;
+    -moz-border-radius: 20px;
+    -webkit-border-radius: 20px;
+}
+
+.help-chat-mess-age-block {
+    margin-left: 15px;
+    margin-right: 15px;
+    padding: 5px 0;
+}
+
+@media (min-width: 450px) and (max-width: 640px) {
+    .pocket-close-icon {
+        top: 27%;
     }
 
-    // Execute each handler in +listeners+ with +args+.
-    //
-    // Each handler will be executed async. On completion the defaultAction
-    // handler will be executed with the args.
-    //
-    // @param [Array] listeners
-    //    An array of functions to execute. Each will be passed args.
-    //
-    // @param [Array] args
-    //    An array of arguments to execute each function in  +listeners+ with.
-    //
-    // @param [String] name
-    //    The name of this event.
-    //
-    // @param [Function, Null, Undefined] defaultAction
-    //    An optional function to execute after every other handler. This will execute even
-    //    if +listeners+ is empty. +defaultAction+ will be passed args as a normal
-    //    handler would.
-    //
-    // @return Undefined
-    //
-    function executeListenersAsyncronously(name, args, defaultAction) {
-      var listeners = _events[name];
-      if (!listeners || listeners.length === 0) return;
-
-      var listenerAcks = listeners.length;
-
-      OTHelpers.forEach(listeners, function(listener) { // , index
-        function filterHandlerAndContext(_listener) {
-          return _listener.context === listener.context && _listener.handler === listener.handler;
-        }
-
-        // We run this asynchronously so that it doesn't interfere with execution if an
-        // error happens
-        OTHelpers.callAsync(function() {
-          try {
-            // have to check if the listener has not been removed
-            if (_events[name] && OTHelpers.some(_events[name], filterHandlerAndContext)) {
-              (listener.closure || listener.handler).apply(listener.context || null, args);
-            }
-          }
-          finally {
-            listenerAcks--;
-
-            if (listenerAcks === 0) {
-              executeDefaultAction(defaultAction, args);
-            }
-          }
-        });
-      });
+    .slide.reject-slide img.reject-button {
+        top: 10%;
+        left: 87%;
     }
 
+    .slide.accept-slide img.accept-button {
+        top: 10%;
+        left: 1%;
+    }
+}
 
-    // This is identical to executeListenersAsyncronously except that handlers will
-    // be executed syncronously.
-    //
-    // On completion the defaultAction handler will be executed with the args.
-    //
-    // @param [Array] listeners
-    //    An array of functions to execute. Each will be passed args.
-    //
-    // @param [Array] args
-    //    An array of arguments to execute each function in  +listeners+ with.
-    //
-    // @param [String] name
-    //    The name of this event.
-    //
-    // @param [Function, Null, Undefined] defaultAction
-    //    An optional function to execute after every other handler. This will execute even
-    //    if +listeners+ is empty. +defaultAction+ will be passed args as a normal
-    //    handler would.
-    //
-    // @return Undefined
-    //
-    function executeListenersSyncronously(name, args) { // defaultAction is not used
-      var listeners = _events[name];
-      if (!listeners || listeners.length === 0) return;
-
-      OTHelpers.forEach(listeners, function(listener) { // index
-        (listener.closure || listener.handler).apply(listener.context || null, args);
-      });
+@media (min-width: 320px) and (max-width: 359px) {
+    .slider-thumb {
+        padding-bottom: 10px;
+        padding-top: 5px;
     }
 
-    var executeListeners = syncronous === true ?
-        executeListenersSyncronously : executeListenersAsyncronously;
-
-
-    var removeAllListenersNamed = function (eventName, context) {
-      if (_events[eventName]) {
-        if (context) {
-          // We are removing by context, get only events that don't
-          // match that context
-          _events[eventName] = OTHelpers.filter(_events[eventName], function(listener){
-            return listener.context !== context;
-          });
-        }
-        else {
-          delete _events[eventName];
-        }
-      }
-    };
-
-    var addListeners = OTHelpers.bind(function (eventNames, handler, context, closure) {
-      var listener = {handler: handler};
-      if (context) listener.context = context;
-      if (closure) listener.closure = closure;
-
-      OTHelpers.forEach(eventNames, function(name) {
-        if (!_events[name]) _events[name] = [];
-        _events[name].push(listener);
-      });
-    }, self);
-
-
-    var removeListeners = function (eventNames, handler, context) {
-      function filterHandlerAndContext(listener) {
-        return !(listener.handler === handler && listener.context === context);
-      }
-
-      OTHelpers.forEach(eventNames, OTHelpers.bind(function(name) {
-        if (_events[name]) {
-          _events[name] = OTHelpers.filter(_events[name], filterHandlerAndContext);
-          if (_events[name].length === 0) delete _events[name];
-        }
-      }, self));
-
-    };
-
-    // Execute any listeners bound to the +event+ Event.
-    //
-    // Each handler will be executed async. On completion the defaultAction
-    // handler will be executed with the args.
-    //
-    // @param [Event] event
-    //    An Event object.
-    //
-    // @param [Function, Null, Undefined] defaultAction
-    //    An optional function to execute after every other handler. This will execute even
-    //    if there are listeners bound to this event. +defaultAction+ will be passed
-    //    args as a normal handler would.
-    //
-    // @return this
-    //
-    self.dispatchEvent = function(event, defaultAction) {
-      if (!event.type) {
-        OTHelpers.error('OTHelpers.Eventing.dispatchEvent: Event has no type');
-        OTHelpers.error(event);
-
-        throw new Error('OTHelpers.Eventing.dispatchEvent: Event has no type');
-      }
-
-      if (!event.target) {
-        event.target = this;
-      }
-
-      if (!_events[event.type] || _events[event.type].length === 0) {
-        executeDefaultAction(defaultAction, [event]);
-        return;
-      }
-
-      executeListeners(event.type, [event], defaultAction);
-
-      return this;
-    };
-
-    // Execute each handler for the event called +name+.
-    //
-    // Each handler will be executed async, and any exceptions that they throw will
-    // be caught and logged
-    //
-    // How to pass these?
-    //  * defaultAction
-    //
-    // @example
-    //  foo.on('bar', function(name, message) {
-    //    alert("Hello " + name + ": " + message);
-    //  });
-    //
-    //  foo.trigger('OpenTok', 'asdf');     // -> Hello OpenTok: asdf
-    //
-    //
-    // @param [String] eventName
-    //    The name of this event.
-    //
-    // @param [Array] arguments
-    //    Any additional arguments beyond +eventName+ will be passed to the handlers.
-    //
-    // @return this
-    //
-    self.trigger = function(eventName) {
-      if (!_events[eventName] || _events[eventName].length === 0) {
-        return;
-      }
-
-      var args = Array.prototype.slice.call(arguments);
-
-      // Remove the eventName arg
-      args.shift();
-
-      executeListeners(eventName, args);
-
-      return this;
-    };
-
-    /**
-     * Adds an event handler function for one or more events.
-     *
-     * <p>
-     * The following code adds an event handler for one event:
-     * </p>
-     *
-     * <pre>
-     * obj.on("eventName", function (event) {
-    *     // This is the event handler.
-    * });
-     * </pre>
-     *
-     * <p>If you pass in multiple event names and a handler method, the handler is
-     * registered for each of those events:</p>
-     *
-     * <pre>
-     * obj.on("eventName1 eventName2",
-     *        function (event) {
-    *            // This is the event handler.
-    *        });
-     * </pre>
-     *
-     * <p>You can also pass in a third <code>context</code> parameter (which is optional) to
-     * define the value of <code>this</code> in the handler method:</p>
-     *
-     * <pre>obj.on("eventName",
-     *        function (event) {
-    *            // This is the event handler.
-    *        },
-     *        obj);
-     * </pre>
-     *
-     * <p>
-     * The method also supports an alternate syntax, in which the first parameter is an object
-     * that is a hash map of event names and handler functions and the second parameter (optional)
-     * is the context for this in each handler:
-     * </p>
-     * <pre>
-     * obj.on(
-     *    {
-    *       eventName1: function (event) {
-    *               // This is the handler for eventName1.
-    *           },
-    *       eventName2:  function (event) {
-    *               // This is the handler for eventName2.
-    *           }
-    *    },
-     *    obj);
-     * </pre>
-     *
-     * <p>
-     * If you do not add a handler for an event, the event is ignored locally.
-     * </p>
-     *
-     * @param {String} type The string identifying the type of event. You can specify multiple event
-     * names in this string, separating them with a space. The event handler will process each of
-     * the events.
-     * @param {Function} handler The handler function to process the event. This function takes
-     * the event object as a parameter.
-     * @param {Object} context (Optional) Defines the value of <code>this</code> in the event
-     * handler function.
-     *
-     * @returns {EventDispatcher} The EventDispatcher object.
-     *
-     * @memberOf EventDispatcher
-     * @method #on
-     * @see <a href="#off">off()</a>
-     * @see <a href="#once">once()</a>
-     * @see <a href="#events">Events</a>
-     */
-    self.on = function(eventNames, handlerOrContext, context) {
-      if (typeof(eventNames) === 'string' && handlerOrContext) {
-        addListeners(eventNames.split(' '), handlerOrContext, context);
-      }
-      else {
-        for (var name in eventNames) {
-          if (eventNames.hasOwnProperty(name)) {
-            addListeners([name], eventNames[name], handlerOrContext);
-          }
-        }
-      }
-
-      return this;
-    };
-
-    /**
-     * Removes an event handler or handlers.
-     *
-     * <p>If you pass in one event name and a handler method, the handler is removed for that
-     * event:</p>
-     *
-     * <pre>obj.off("eventName", eventHandler);</pre>
-     *
-     * <p>If you pass in multiple event names and a handler method, the handler is removed for
-     * those events:</p>
-     *
-     * <pre>obj.off("eventName1 eventName2", eventHandler);</pre>
-     *
-     * <p>If you pass in an event name (or names) and <i>no</i> handler method, all handlers are
-     * removed for those events:</p>
-     *
-     * <pre>obj.off("event1Name event2Name");</pre>
-     *
-     * <p>If you pass in no arguments, <i>all</i> event handlers are removed for all events
-     * dispatched by the object:</p>
-     *
-     * <pre>obj.off();</pre>
-     *
-     * <p>
-     * The method also supports an alternate syntax, in which the first parameter is an object that
-     * is a hash map of event names and handler functions and the second parameter (optional) is
-     * the context for this in each handler:
-     * </p>
-     * <pre>
-     * obj.off(
-     *    {
-    *       eventName1: event1Handler,
-    *       eventName2: event2Handler
-    *    });
-     * </pre>
-     *
-     * @param {String} type (Optional) The string identifying the type of event. You can
-     * use a space to specify multiple events, as in "accessAllowed accessDenied
-     * accessDialogClosed". If you pass in no <code>type</code> value (or other arguments),
-     * all event handlers are removed for the object.
-     * @param {Function} handler (Optional) The event handler function to remove. The handler
-     * must be the same function object as was passed into <code>on()</code>. Be careful with
-     * helpers like <code>bind()</code> that return a new function when called. If you pass in
-     * no <code>handler</code>, all event handlers are removed for the specified event
-     * <code>type</code>.
-     * @param {Object} context (Optional) If you specify a <code>context</code>, the event handler
-     * is removed for all specified events and handlers that use the specified context. (The
-     * context must match the context passed into <code>on()</code>.)
-     *
-     * @returns {Object} The object that dispatched the event.
-     *
-     * @memberOf EventDispatcher
-     * @method #off
-     * @see <a href="#on">on()</a>
-     * @see <a href="#once">once()</a>
-     * @see <a href="#events">Events</a>
-     */
-    self.off = function(eventNames, handlerOrContext, context) {
-      if (typeof eventNames === 'string') {
-        if (handlerOrContext && OTHelpers.isFunction(handlerOrContext)) {
-          removeListeners(eventNames.split(' '), handlerOrContext, context);
-        }
-        else {
-          OTHelpers.forEach(eventNames.split(' '), function(name) {
-            removeAllListenersNamed(name, handlerOrContext);
-          }, this);
-        }
-
-      } else if (!eventNames) {
-        // remove all bound events
-        _events = {};
-
-      } else {
-        for (var name in eventNames) {
-          if (eventNames.hasOwnProperty(name)) {
-            removeListeners([name], eventNames[name], handlerOrContext);
-          }
-        }
-      }
-
-      return this;
-    };
-
-
-    /**
-     * Adds an event handler function for one or more events. Once the handler is called,
-     * the specified handler method is removed as a handler for this event. (When you use
-     * the <code>on()</code> method to add an event handler, the handler is <i>not</i>
-     * removed when it is called.) The <code>once()</code> method is the equivilent of
-     * calling the <code>on()</code>
-     * method and calling <code>off()</code> the first time the handler is invoked.
-     *
-     * <p>
-     * The following code adds a one-time event handler for the <code>accessAllowed</code> event:
-     * </p>
-     *
-     * <pre>
-     * obj.once("eventName", function (event) {
-    *    // This is the event handler.
-    * });
-     * </pre>
-     *
-     * <p>If you pass in multiple event names and a handler method, the handler is registered
-     * for each of those events:</p>
-     *
-     * <pre>obj.once("eventName1 eventName2"
-     *          function (event) {
-     *
-    *              // This is the event handler.
-    *          });
-     * </pre>
-     *
-     * <p>You can also pass in a third <code>context</code> parameter (which is optional) to define
-     * the value of
-     * <code>this</code> in the handler method:</p>
-     *
-     * <pre>obj.once("eventName",
-     *          function (event) {
-    *              // This is the event handler.
-    *          },
-     *          obj);
-     * </pre>
-     *
-     * <p>
-     * The method also supports an alternate syntax, in which the first parameter is an object that
-     * is a hash map of event names and handler functions and the second parameter (optional) is the
-     * context for this in each handler:
-     * </p>
-     * <pre>
-     * obj.once(
-     *    {
-    *       eventName1: function (event) {
-    *                  // This is the event handler for eventName1.
-    *           },
-    *       eventName2:  function (event) {
-    *                  // This is the event handler for eventName1.
-    *           }
-    *    },
-     *    obj);
-     * </pre>
-     *
-     * @param {String} type The string identifying the type of event. You can specify multiple
-     * event names in this string, separating them with a space. The event handler will process
-     * the first occurence of the events. After the first event, the handler is removed (for
-     * all specified events).
-     * @param {Function} handler The handler function to process the event. This function takes
-     * the event object as a parameter.
-     * @param {Object} context (Optional) Defines the value of <code>this</code> in the event
-     * handler function.
-     *
-     * @returns {Object} The object that dispatched the event.
-     *
-     * @memberOf EventDispatcher
-     * @method #once
-     * @see <a href="#on">on()</a>
-     * @see <a href="#off">off()</a>
-     * @see <a href="#events">Events</a>
-     */
-    self.once = function(eventNames, handler, context) {
-      var names = eventNames.split(' '),
-          fun = OTHelpers.bind(function() {
-            var result = handler.apply(context || null, arguments);
-            removeListeners(names, handler, context);
-
-            return result;
-          }, this);
-
-      addListeners(names, handler, context, fun);
-      return this;
-    };
-
-
-    /**
-     * Deprecated; use <a href="#on">on()</a> or <a href="#once">once()</a> instead.
-     * <p>
-     * This method registers a method as an event listener for a specific event.
-     * <p>
-     *
-     * <p>
-     *   If a handler is not registered for an event, the event is ignored locally. If the
-     *   event listener function does not exist, the event is ignored locally.
-     * </p>
-     * <p>
-     *   Throws an exception if the <code>listener</code> name is invalid.
-     * </p>
-     *
-     * @param {String} type The string identifying the type of event.
-     *
-     * @param {Function} listener The function to be invoked when the object dispatches the event.
-     *
-     * @param {Object} context (Optional) Defines the value of <code>this</code> in the event
-     * handler function.
-     *
-     * @memberOf EventDispatcher
-     * @method #addEventListener
-     * @see <a href="#on">on()</a>
-     * @see <a href="#once">once()</a>
-     * @see <a href="#events">Events</a>
-     */
-    // See 'on' for usage.
-    // @depreciated will become a private helper function in the future.
-    self.addEventListener = function(eventName, handler, context) {
-      OTHelpers.warn('The addEventListener() method is deprecated. Use on() or once() instead.');
-      addListeners([eventName], handler, context);
-    };
-
-
-    /**
-     * Deprecated; use <a href="#on">on()</a> or <a href="#once">once()</a> instead.
-     * <p>
-     * Removes an event listener for a specific event.
-     * <p>
-     *
-     * <p>
-     *   Throws an exception if the <code>listener</code> name is invalid.
-     * </p>
-     *
-     * @param {String} type The string identifying the type of event.
-     *
-     * @param {Function} listener The event listener function to remove.
-     *
-     * @param {Object} context (Optional) If you specify a <code>context</code>, the event
-     * handler is removed for all specified events and event listeners that use the specified
-     context. (The context must match the context passed into
-     * <code>addEventListener()</code>.)
-     *
-     * @memberOf EventDispatcher
-     * @method #removeEventListener
-     * @see <a href="#off">off()</a>
-     * @see <a href="#events">Events</a>
-     */
-    // See 'off' for usage.
-    // @depreciated will become a private helper function in the future.
-    self.removeEventListener = function(eventName, handler, context) {
-      OTHelpers.warn('The removeEventListener() method is deprecated. Use off() instead.');
-      removeListeners([eventName], handler, context);
-    };
-
-
-    /* test-code */
-    self.__testonly__ =  {
-      events: function() {
-        return _events;
-      }
-    };
-
-    // When this is being used inside Jasmime we create and expose spies for
-    // several private methods. These are used for verification in our test
-    // suites.
-    var env = jasmine.getEnv();
-    if (env) {
-      addListeners = jasmine.createSpy('spy on OTHelpers.eventing.addListeners')
-          .andCallFake(addListeners);
-      removeListeners = jasmine.createSpy('spy on OTHelpers.eventing.removeListeners')
-          .andCallFake(removeListeners);
-      removeAllListenersNamed = jasmine
-          .createSpy('spy on OTHelpers.eventing.removeAllListenersNamed')
-          .andCallFake(removeAllListenersNamed);
-
-      /*global afterEach:true*/
-      afterEach(function() {
-        self.__testonly__.resetSpies();
-      });
+    .slider-thumb ul li {
+        margin: 0;
+        width: 100%;
     }
 
-    self.__testonly__.removeAllListenersNamed = removeAllListenersNamed;
-    self.__testonly__.removeListeners = removeListeners;
-    self.__testonly__.addListeners = addListeners;
-
-    self.__testonly__.resetSpies = function() {
-      addListeners.reset();
-      removeListeners.reset();
-      removeAllListenersNamed.reset();
-    };
-    /* end-test-code */
-
-
-    return self;
-  };
-
-  OTHelpers.eventing.Event = function() {
-
-    return function (type, cancelable) {
-      this.type = type;
-      this.cancelable = cancelable !== undefined ? cancelable : true;
-
-      var _defaultPrevented = false;
-
-      this.preventDefault = function() {
-        if (this.cancelable) {
-          _defaultPrevented = true;
-        } else {
-          OTHelpers.warn('Event.preventDefault :: Trying to preventDefault ' +
-              'on an Event that isn\'t cancelable');
-        }
-      };
-
-      this.isDefaultPrevented = function() {
-        return _defaultPrevented;
-      };
-    };
-
-  };
-
-})(window, window.OTHelpers);
-
-/*jshint browser:true, smarttabs:true*/
-
-// tb_require('../helpers.js')
-// tb_require('./callbacks.js')
-
-// DOM helpers
-(function(window, OTHelpers, undefined) {
-
-  OTHelpers.isElementNode = function(node) {
-    return node && typeof node === 'object' && node.nodeType == 1;
-  };
-
-// Returns true if the client supports element.classList
-  OTHelpers.supportsClassList = function() {
-    var hasSupport = typeof(document !== "undefined") && ("classList" in document.createElement("a"));
-    OTHelpers.supportsClassList = function() { return hasSupport; };
-
-    return hasSupport;
-  };
-
-  OTHelpers.removeElement = function(element) {
-    if (element && element.parentNode) {
-      element.parentNode.removeChild(element);
-    }
-  };
-
-  OTHelpers.removeElementById = function(elementId) {
-    this.removeElement(OTHelpers(elementId));
-  };
-
-  OTHelpers.removeElementsByType = function(parentElem, type) {
-    if (!parentElem) return;
-
-    var elements = parentElem.getElementsByTagName(type);
-
-    // elements is a "live" NodesList collection. Meaning that the collection
-    // itself will be mutated as we remove elements from the DOM. This means
-    // that "while there are still elements" is safer than "iterate over each
-    // element" as the collection length and the elements indices will be modified
-    // with each iteration.
-    while (elements.length) {
-      parentElem.removeChild(elements[0]);
-    }
-  };
-
-  OTHelpers.emptyElement = function(element) {
-    while (element.firstChild) {
-      element.removeChild(element.firstChild);
-    }
-    return element;
-  };
-
-  OTHelpers.createElement = function(nodeName, attributes, children, doc) {
-    var element = (doc || document).createElement(nodeName);
-
-    if (attributes) {
-      for (var name in attributes) {
-        if (typeof(attributes[name]) === 'object') {
-          if (!element[name]) element[name] = {};
-
-          var subAttrs = attributes[name];
-          for (var n in subAttrs) {
-            element[name][n] = subAttrs[n];
-          }
-        }
-        else if (name === 'className') {
-          element.className = attributes[name];
-        }
-        else {
-          element.setAttribute(name, attributes[name]);
-        }
-      }
+    .slider-thumb img {
+        width: 11.87vw;
+        width: 11.87vw;
     }
 
-    var setChildren = function(child) {
-      if(typeof child === 'string') {
-        element.innerHTML = element.innerHTML + child;
-      } else {
-        element.appendChild(child);
-      }
-    };
-
-    if(OTHelpers.isArray(children)) {
-      OTHelpers.forEach(children, setChildren);
-    } else if(children) {
-      setChildren(children);
+    .settings .slider-thumb li .cross-icon {
+        width: 16px;
+        height: 16px;
+        margin: 10px;
     }
 
-    return element;
-  };
-
-  OTHelpers.createButton = function(innerHTML, attributes, events) {
-    var button = OTHelpers.createElement('button', attributes, innerHTML);
-
-    if (events) {
-      for (var name in events) {
-        if (events.hasOwnProperty(name)) {
-          OTHelpers.on(button, name, events[name]);
-        }
-      }
-
-      button._boundEvents = events;
+    .caption-conainer-view ul {
+        padding: 3px 0 0 0;
     }
 
-    return button;
-  };
-
-// Helper function for adding event listeners to dom elements.
-// WARNING: This doesn't preserve event types, your handler could be getting all kinds of different
-// parameters depending on the browser. You also may have different scopes depending on the browser
-// and bubbling and cancelable are not supported.
-  OTHelpers.on = function(element, eventName,  handler) {
-    if (element.addEventListener) {
-      element.addEventListener(eventName, handler, false);
-    } else if (element.attachEvent) {
-      element.attachEvent("on" + eventName, handler);
-    } else {
-      var oldHandler = element["on"+eventName];
-      element["on"+eventName] = function() {
-        handler.apply(this, arguments);
-        if (oldHandler) oldHandler.apply(this, arguments);
-      };
-    }
-    return element;
-  };
-
-// Helper function for removing event listeners from dom elements.
-  OTHelpers.off = function(element, eventName, handler) {
-    if (element.removeEventListener) {
-      element.removeEventListener (eventName, handler,false);
-    }
-    else if (element.detachEvent) {
-      element.detachEvent("on" + eventName, handler);
-    }
-  };
-
-
-// Detects when an element is not part of the document flow because it or one of it's ancesters has display:none.
-  OTHelpers.isDisplayNone = function(element) {
-    if ( (element.offsetWidth === 0 || element.offsetHeight === 0) && OTHelpers.css(element, 'display') === 'none') return true;
-    if (element.parentNode && element.parentNode.style) return OTHelpers.isDisplayNone(element.parentNode);
-    return false;
-  };
-
-  OTHelpers.findElementWithDisplayNone = function(element) {
-    if ( (element.offsetWidth === 0 || element.offsetHeight === 0) && OTHelpers.css(element, 'display') === 'none') return element;
-    if (element.parentNode && element.parentNode.style) return OTHelpers.findElementWithDisplayNone(element.parentNode);
-    return null;
-  };
-
-  function objectHasProperties(obj) {
-    for (var key in obj) {
-      if (obj.hasOwnProperty(key)) return true;
-    }
-    return false;
-  }
-
-
-// Allows an +onChange+ callback to be triggered when specific style properties
-// of +element+ are notified. The callback accepts a single parameter, which is
-// a hash where the keys are the style property that changed and the values are
-// an array containing the old and new values ([oldValue, newValue]).
-//
-// Width and Height changes while the element is display: none will not be
-// fired until such time as the element becomes visible again.
-//
-// This function returns the MutationObserver itself. Once you no longer wish
-// to observe the element you should call disconnect on the observer.
-//
-// Observing changes:
-//  // observe changings to the width and height of object
-//  dimensionsObserver = OTHelpers.observeStyleChanges(object, ['width', 'height'], function(changeSet) {
-//      OT.debug("The new width and height are " + changeSet.width[1] + ',' + changeSet.height[1]);
-//  });
-//
-// Cleaning up
-//  // stop observing changes
-//  dimensionsObserver.disconnect();
-//  dimensionsObserver = null;
-//
-  OTHelpers.observeStyleChanges = function(element, stylesToObserve, onChange) {
-    var oldStyles = {};
-
-    var getStyle = function getStyle(style) {
-      switch (style) {
-        case 'width':
-          return OTHelpers.width(element);
-
-        case 'height':
-          return OTHelpers.height(element);
-
-        default:
-          return OTHelpers.css(element);
-      }
-    };
-
-    // get the inital values
-    OTHelpers.forEach(stylesToObserve, function(style) {
-      oldStyles[style] = getStyle(style);
-    });
-
-    var observer = new MutationObserver(function(mutations) {
-      var changeSet = {};
-
-      OTHelpers.forEach(mutations, function(mutation) {
-        if (mutation.attributeName !== 'style') return;
-
-        var isHidden = OTHelpers.isDisplayNone(element);
-
-        OTHelpers.forEach(stylesToObserve, function(style) {
-          if(isHidden && (style == 'width' || style == 'height')) return;
-
-          var newValue = getStyle(style);
-
-          if (newValue !== oldStyles[style]) {
-            // OT.debug("CHANGED " + style + ": " + oldStyles[style] + " -> " + newValue);
-
-            changeSet[style] = [oldStyles[style], newValue];
-            oldStyles[style] = newValue;
-          }
-        });
-      });
-
-      if (objectHasProperties(changeSet)) {
-        // Do this after so as to help avoid infinite loops of mutations.
-        OTHelpers.callAsync(function() {
-          onChange.call(null, changeSet);
-        });
-      }
-    });
-
-    observer.observe(element, {
-      attributes:true,
-      attributeFilter: ['style'],
-      childList:false,
-      characterData:false,
-      subtree:false
-    });
-
-    return observer;
-  };
-
-
-// trigger the +onChange+ callback whenever
-// 1. +element+ is removed
-// 2. or an immediate child of +element+ is removed.
-//
-// This function returns the MutationObserver itself. Once you no longer wish
-// to observe the element you should call disconnect on the observer.
-//
-// Observing changes:
-//  // observe changings to the width and height of object
-//  nodeObserver = OTHelpers.observeNodeOrChildNodeRemoval(object, function(removedNodes) {
-//      OT.debug("Some child nodes were removed");
-//      OTHelpers.forEach(removedNodes, function(node) {
-//          OT.debug(node);
-//      });
-//  });
-//
-// Cleaning up
-//  // stop observing changes
-//  nodeObserver.disconnect();
-//  nodeObserver = null;
-//
-  OTHelpers.observeNodeOrChildNodeRemoval = function(element, onChange) {
-    var observer = new MutationObserver(function(mutations) {
-      var removedNodes = [];
-
-      OTHelpers.forEach(mutations, function(mutation) {
-        if (mutation.removedNodes.length) {
-          removedNodes = removedNodes.concat(Array.prototype.slice.call(mutation.removedNodes));
-        }
-      });
-
-      if (removedNodes.length) {
-        // Do this after so as to help avoid infinite loops of mutations.
-        OTHelpers.callAsync(function() {
-          onChange(removedNodes);
-        });
-      }
-    });
-
-    observer.observe(element, {
-      attributes:false,
-      childList:true,
-      characterData:false,
-      subtree:true
-    });
-
-    return observer;
-  };
-
-})(window, window.OTHelpers);
-
-
-/*jshint browser:true, smarttabs:true*/
-
-// tb_require('../helpers.js')
-// tb_require('./dom.js')
-
-(function(window, OTHelpers, undefined) {
-
-  OTHelpers.Modal = function(options) {
-
-    OTHelpers.eventing(this, true);
-
-    var callback = arguments[arguments.length - 1];
-
-    if(!OTHelpers.isFunction(callback)) {
-      throw new Error('OTHelpers.Modal2 must be given a callback');
+    .caption-conainer-view ul li {
+        font-size: 13px
     }
 
-    if(arguments.length < 2) {
-      options = {};
+    .modal-full {
+        margin: 0 20px
     }
 
-    var domElement = document.createElement('iframe');
-
-    domElement.id = options.id || OTHelpers.uuid();
-    domElement.style.position = 'absolute';
-    domElement.style.position = 'fixed';
-    domElement.style.height = '100%';
-    domElement.style.width = '100%';
-    domElement.style.top = '0px';
-    domElement.style.left = '0px';
-    domElement.style.right = '0px';
-    domElement.style.bottom = '0px';
-    domElement.style.zIndex = 1000;
-    domElement.style.border = '0';
-
-    try {
-      domElement.style.backgroundColor = 'rgba(0,0,0,0.2)';
-    } catch (err) {
-      // Old IE browsers don't support rgba and we still want to show the upgrade message
-      // but we just make the background of the iframe completely transparent.
-      domElement.style.backgroundColor = 'transparent';
-      domElement.setAttribute('allowTransparency', 'true');
+    ul.chat-info-type li a {
+        padding: 10px 0 10px 45px;
+        bottom: 7px;
     }
 
-    domElement.scrolling = 'no';
-    domElement.setAttribute('scrolling', 'no');
-
-    var wrappedCallback = function() {
-      var doc = domElement.contentDocument || domElement.contentWindow.document;
-      doc.body.style.backgroundColor = 'transparent';
-      doc.body.style.border = 'none';
-      callback(
-          domElement.contentWindow,
-          doc
-      );
-    };
-
-    document.body.appendChild(domElement);
-
-    if(OTHelpers.browserVersion().iframeNeedsLoad) {
-      OTHelpers.on(domElement, 'load', wrappedCallback);
-    } else {
-      setTimeout(wrappedCallback);
+    .modal-full {
+        top: 20px
     }
 
-    this.close = function() {
-      OTHelpers.removeElement(domElement);
-      this.trigger('closed');
-      this.element = domElement = null;
-      return this;
-    };
+    .pocket-close-icon {
+        top: 25%;
+    }
 
-    this.element = domElement;
+    .btn-default, .btn-primary {
+        min-width: 102px
+    }
+}
 
-  };
+@media only screen and (-webkit-min-device-pixel-ratio: 1.5), only screen and (min--moz-device-pixel-ratio: 1.5), only screen and (min-resolution: 240dpi) {
+    .sprite {
+        background-image: url(img/pickcontact-card@2x.png);
+    }
+}
 
-})(window, window.OTHelpers);
+@media (min-height: 0) and (max-height: 510px) {
+    .progress-bar-block {
+        height: 25px;
+    }
+
+    .progress {
+        height: 25px;
+        line-height: inherit;
+    }
+
+    .chat-mess-age-block {
+        padding: 15px 0;
+    }
+
+    .send-card-opt {
+        padding: 10px 0
+    }
+
+    .send-card-opt ul li {
+        margin: 5px;
+    }
+
+    .btn-in-block {
+        padding: 10px 0;
+    }
+
+    .contact-card-opt {
+        padding: 35px 0;
+    }
+
+    h1.logo {
+        margin: 40px auto;
+    }
+
+    .carousel-discover1 {
+        padding-bottom: 10px;
+    }
+
+    .carousel-discover2 {
+        padding-top: 10px;
+    }
+
+    .progress-bar-block {
+        margin-top: 0;
+    }
+
+    .title-block {
+        padding: 0;
+    }
+
+    .pocket-head {
+        padding: 5px 0;
+    }
+
+    .settings ul {
+        padding: 10px 0 0 0;
+    }
+
+    .settings ul li {
+        font-size: 15px;
+    }
+
+    .label-title {
+        font-size: 15px;
+    }
+
+    .item {
+        font-size: 15px;
+    }
+
+    .profile-title {
+        padding: 15px 15px 5px 15px;
+    }
+
+    .item-complex .item-content {
+        padding: 10px 50px 10px 15px;
+    }
+
+    .alpha_sidebar {
+        font-size: 82%;
+    }
+}
+
+@media (min-height: 511px) and (max-height: 589px) {
+    .alpha_sidebar {
+        font-size: 85%;
+    }
+}
+
+@media (min-height: 590px) and (max-height: 619px) {
+    .alpha_sidebar {
+        font-size: 100%;
+    }
+}
+
+@media (min-height: 620px) and (max-height: 644px) {
+    .alpha_sidebar {
+        font-size: 105%;
+    }
+}
+
+@media (min-height: 645px) and (max-height: 689px) {
+    .alpha_sidebar {
+        font-size: 115%;
+    }
+}
+
+@media (min-height: 690px) and (max-height: 719px) {
+    .alpha_sidebar {
+        font-size: 120%;
+    }
+}
+
+@media (min-height: 720px) and (max-height: 850px) {
+    .alpha_sidebar {
+        font-size: 125%;
+    }
+}
+
+@media (min-height: 800px) and (max-height: 2000px) {
+    .slide.reject-slide img.reject-button {
+        left: 90%;
+    }
+
+    .cross-txt, .tick-txt {
+        top: 40%;
+    }
+
+    .slide.reject-slide img.reject-button, .slide.accept-slide img.accept-button {
+        top: 24%;
+    }
+}
+
+@media only screen and (orientation: landscape) {
+    /*#screen {*/
+        /*width: 100% !important;*/
+        /*height: 100% !important;*/
+    /*}*/
+
+    .help-title {
+        top: 0;
+        padding-top: 5%;
+    }
+
+    .swipe {
+        bottom: 4%;
+    }
+
+    .carousel-discover1 {
+        padding-top: 10%;
+    }
+
+    .slider-pager {
+        bottom: 15px;
+    }
+
+    .page-slider {
+        height: auto;
+    }
+}
+
+/*.angular-google-map-container {*/
+/*height: 100vh;*/
+/*z-index: 9999;*/
+/*}*/
+
+/*.google-map {*/
+/*position: absolute;*/
+/*left: 0;*/
+/*right: 0;*/
+/*bottom: 0;*/
+/*z-index: 101;*/
+/*height: 40%;*/
+/*}*/
+
+/*range slider*/
+.ngrs-range-slider {
+    border-left: none !important;
+    border-right: none !important;
+    border-radius: 0 !important;
+    border-color: #ddd;
+    background-color: #fff;
+    color: #444;
+    position: relative;
+    z-index: 2;
+    display: block;
+    margin: -1px;
+    padding: 10px !important;
+    border-width: 1px;
+    border-style: solid;
+    font-size: 18px;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+    margin-bottom: -5px !important;
+}
+
+.ngrs-range-slider .ngrs-handle {
+    height: 7.33vw !important;
+    width: 7.33vw !important;
+    border-radius: 50% !important;
+    background: #ffffff !important;
+    box-shadow: 0 3px 3px rgba(0, 0, 0, 0.2);
+    margin: 0 0 0 -3.62vw!important;
+}
+
+.ngrs-range-slider .ngrs-handle.ngrs-over i {
+    background: none;
+}
+
+.ngrs-range-slider .ngrs-runner {
+    height: 7.33vw !important;
+    overflow: visible !important;
+    margin: 2vw 7.33vw 0 7.33vw !important;
+}
+
+.ngrs-range-slider .ngrs-join {
+    display: inline-block;
+    overflow: hidden;
+    margin: 0 !important;
+    padding-right: 0px;
+    padding-left: 0px;
+    width: auto;
+    top: 48% !important;
+    height: 1px !important;
+    outline: none;
+    background: -webkit-gradient(linear, 50% 0%, 50% 100%, color-stop(0%, #ccc), color-stop(100%, #ccc));
+    background: linear-gradient(to right, #ccc 0%, #ccc 100%);
+    background-position: center;
+    background-size: 99% 2px;
+    background-repeat: no-repeat;
+    -webkit-appearance: none;
+    background-image: none !important;
+    background-color: rgb(239, 39, 93) !important;
+    z-index: 10;
+}
+
+.ngrs-runner {
+    display: inline-block;
+    overflow: hidden;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding-right: 2px;
+    padding-left: 1px;
+    width: auto;
+    height: 43px;
+    outline: none;
+    background: -webkit-gradient(linear, 50% 0%, 50% 100%, color-stop(0%, #ccc), color-stop(100%, #ccc));
+    background: linear-gradient(to right, #ccc 0%, #ccc 100%);
+    background-position: center;
+    background-size: 99% 1px;
+    background-repeat: no-repeat;
+    -webkit-appearance: none;
+}
+
+.ngrs-range-slider.ngrs-focus {
+    border-color: #ddd !important;
+    -moz-box-shadow: none !important;
+    -webkit-box-shadow: none !important;
+    box-shadow: none !important;
+}
+
+.animated {
+    visibility: hidden;
+}
+
+.visible {
+    visibility: visible;
+}
+
+ion-view {
+    transition-duration: 500ms !important;
+    -webkit-transition-duration: 500ms !important;
+}
+
+div.pane {
+    transition-duration: 1200ms !important;
+    -webkit-transition-duration: 1200ms !important;
+}
+
+.gm-login {
+    background: #ccc9d1 url('../images/imgo.jpg') no-repeat;
+    background-size: 101%;
+}
+
+.fade-in-out.ng-enter, .fade-in-out .ng-enter {
+    -webkit-animation: slideInUp 0.3s;
+    -moz-animation: slideInUp 0.3s;
+    animation: slideInUp 0.3s;
+}
+
+#networks div.list {
+    padding: 20px 0 0 0;
+}
+
+.has-header-settings {
+    top: 100px;
+}
+
+.has-header-pocket {
+    top: 83px;
+}
+
+.hiding {
+    -webkit-transition: all 1s;
+    transition: all 1s;
+    opacity: 0;
+    height: 0 !important;
+    margin: 0;
+    padding: 0;
+}
+
+.hiding .delete-item {
+    display: none;
+}
+
+.item.add-more {
+    border-top: none;
+}
+
+.item.add-more input {
+    width: 100%;
+    position: relative;
+    top: -1px;
+    padding: 0 15px;
+    font-size: 4.66vw;
+    height: 11.73vw;
+    line-height: 11.73vw;
+    margin-left: 4.26vw;
+}
+
+.settings--discovery span {
+    display: block;
+    float: left;
+    width: 33%;
+}
+
+.small-text {
+    font-size: 3.73vw;
+    font-weight: 400;
+    text-align: left;
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+    padding-left: 4.26vw;
+    color: #7a7a7f;
+}
+
+.item.active, .item.activated, .item-complex.active .item-content, .item-complex.activated .item-content, .item .item-content.active, .item .item-content.activated {
+    background: none;
+}
+
+.left-list .list {
+    margin-top: 20px;
+    /*padding-left: 20px;*/
+    color: #f10950;
+    background: white;
+}
+
+.left-list-security .list {
+    margin-top: 7.86vw;
+}
+
+.left-list .item:last-child .selection__content {
+    border-bottom: none;
+}
+
+.left-list .list .item-content .selection__content__pink {
+    color: #f10950;
+}
+
+.button.button-assertive.active, .button.button-assertive.activated {
+    background-color: #d11e45;
+}
+
+.list-block-selection .button.button-assertive.active, .list-block-selection .button.button-assertive.activated {
+    line-height: 45px;
+    padding-top: 0;
+}
+
+.item-reorder .button.icon {
+    color: #c7c7cc;
+}
+
+.status-bar-header {
+    background: white;
+    height: 25px;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    z-index: 1;
+    -webkit-box-shadow: 0px 1px 8px 0px rgba(0, 0, 0, 0.3);
+    -moz-box-shadow: 0px 1px 8px 0px rgba(0, 0, 0, 0.3);
+    box-shadow: 0px 1px 8px 0px rgba(0, 0, 0, 0.3);
+}
+
+.loading-screen-background {
+    background-image: url(../img/ice-lolly-red-whole.png);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 17.6%;
+    height: 100vh;
+}
+
+.item.item-share {
+    padding: 0 15px 1px;
+}
+
+.item-options .button {
+    min-height: 40px;
+}
+
+.contacts-content .disabled img {
+    -webkit-filter: grayscale(100%);
+    filter: grayscale(100%);
+}
+
+.gm-content.gm-with-background {
+    /*background-image: url(../images/background.png);*/
+}
+
+.list-block-selection .item.item-2 {
+    border-bottom: none;
+}
+
+/*New css modal pages Starts*/
+
+.modal-item .modal-dialog {
+    margin: 0 auto;
+    width: 75.3vw;
+    height: 69.3vw;
+}
+
+.modal-item .modal-body {
+    padding: 0;
+    background-color: white;
+    height:52.13vw!important;
+}
+
+.modal-item .modal-info {
+    text-align: center;
+    color: #8f8f8f
+}
+
+.modal-item .modal-info .icon {
+    text-align: center;
+    padding: 0!important;
+    margin: 8.53vw auto 0 auto;
+    width: auto;
+    height: 10.66vw;
+}
+.modal-item .modal-info .icon img{
+    height: 100%;
+    width: auto;
+}
+
+.modal-item .modal-info p {
+    font-size: 4.66vw;
+    color: #8f8f8f;
+    font-weight: 500;
+}
+
+.modal-item .modal-info p.title {
+    padding: 9.33vw 0;
+    margin-bottom: 0;
+    line-height: normal;
+}
+
+.modal-item .modal-info p.title span {
+    display: block;
+    font-size: 6.4vw;
+    line-height: normal;
+}
+
+.modal-item .cant-talk {
+    padding: 0px 0 10px 0;
+    font-size: 3.86vw;
+    margin-top: 1vw;
+}
+
+.modal-item .cant-talk a {
+    font-weight: 700;
+    color: #fd3257
+}
+
+.modal-item .modal-footer {
+    background-color: #f9f9f9;
+    border-radius: 0 0 6px 6px;
+    text-align: center;
+    padding: 0;
+    height: 17.2vw;
+    overflow: hidden;
+}
+
+.modal-item .modal-footer .time {
+    font-size: 6.66vw;
+    color: #fd3257;
+    line-height: 17.2vw;
+}
+
+.modal-item .modal-footer .buttons {
+    padding: 0;
+    margin: 0;
+    list-style: none
+}
+
+.modal-item .modal-footer .buttons li {
+    float: left;
+    width: 50%;
+    font-size: 6.66vw;
+}
+
+.modal-item .modal-footer .buttons li.first a {
+    border-right: solid 1px #e1e1e1;
+    /*padding-right: 8px*/
+}
+
+.modal-item .modal-footer .buttons li a {
+    display: block;
+    text-align: center;
+    padding: 0;
+    color: #8f8f8f;
+    line-height: 17.2vw;
+}
+
+.modal-item .modal-footer .buttons li a:hover, .modal-item .modal-footer .buttons li a:focus, .modal-item .modal-footer .buttons li a.active {
+    color: #fd3257
+}
+
+.modal-item .modal-footer .buttons li.full {
+    float: none;
+    width: 100%
+}
+
+.modal-item .modal-info p.title span.rem-time {
+    color: #fd3257;
+    display: inline;
+    font-size: 17px
+}
+
+.modal-item .modal-content {
+    border-radius: 6px;
+    box-shadow: none;
+    border: solid 1px #e2e2e3;
+}
+
+.modal-item#match .modal-info p.title {
+    padding-top: 16px;
+    padding-bottom: 12px
+}
+
+.modal-item .cant-talk {
+    padding-bottom: 5px
+}
+
+.modal-item#match .modal-info .icon {
+    padding-bottom: 11px;
+}
+
+.modal-item#match .modal-body {
+    height: 205px
+}
+
+.modal-item#match .cant-talk {
+    padding-bottom: 0;
+}
+
+.modal-item#wait .modal-info .icon {
+    padding-top: 19px;
+    padding-bottom: 13px
+}
+
+.modal-item#wait .modal-body {
+    height: 205px
+}
+
+.modal-item#wait .modal-info p.title {
+    padding-bottom: 12px
+}
+
+.modal-item#wait .cant-talk {
+    padding-bottom: 7px
+}
+
+.modal-item#no-luck .modal-body {
+    border-radius: 8px;
+    height: 195px
+}
+
+.modal-item#no-luck .modal-info .icon {
+    padding-top: 0;
+    padding-bottom: 0px;
+}
+
+.modal-item#no-luck .modal-body {
+    border-radius: 8px;
+    height: 52.13vw;
+}
+
+.modal-item#leave-the-game .modal-info .icon {
+    padding-top: 16px;
+    padding-bottom: 15px
+}
+
+.modal-item#times-up .modal-info .icon {
+    padding-bottom: 9px
+}
+
+.modal-item#wait-for-partner,
+.modal-item#no-luck,
+.modal-item#times-up,
+.modal-item#leave-the-game,
+.modal-item#match,
+.modal-item#wait {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    left: 0;
+    background: rgba(0,0,0,0.5);
+}
+
+.modal-item#wait-for-partner .modal-info .icon {
+    padding-top: 18px;
+    padding-bottom: 16px
+}
+
+.modal-item#wait-for-partner .modal-body {
+    border-radius: 8px;
+    height: 194px
+}
+
+.modal-item#message-sent .modal-info .icon {
+    padding-top: 6px;
+    padding-bottom: 14px
+}
+
+.modal-item#message-sent .modal-body {
+    border-radius: 8px;
+    height: 194px
+}
+
+.modal-item#sex-selection .modal-info .icon {
+    padding-bottom: 6px
+}
+
+.modal-item#sex-selection .modal-body {
+    border-radius: 8px;
+    height: 194px
+}
+
+.welcome-givme {
+    text-align: center;
+    margin: 0 10px;
+}
+
+.welcome-givme .pic {
+    position: relative;
+    margin-top: 42.26vw;
+    margin-bottom: 24.01vw;
+    vertical-align: middle;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.welcome-givme .pic img {
+    width: 17.6vw;
+    max-width: 132px;
+}
+
+.welcome-givme .welcome-title {
+    font-size: 6.53vw;
+    color: #424242
+}
+
+.welcome-givme .welcome-subtitle {
+    font-size: 4.66vw;
+    color: #424242
+}
+
+.welcome-givme .fb-login {
+    padding: 25.33vw 0 0 0;
+}
+
+.welcome-givme .fb-login .login-with-fb-btn {
+    background-color: #3c5c97;
+    color: #fff;
+    padding: 5.07vw 15px;
+    text-align: center;
+    border-radius: 6px;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    margin: 0;
+    display: inline-block;
+    font-size: 5.86vw;
+    line-height: normal;
+    width: 76.53vw;
+    max-width: 574px;
+}
+
+.welcome-givme p.note {
+    font-size: 2.8vw;
+    margin-top: 6.67vw;
+    color: #656565;
+}
+
+.home-gevme {
+    text-align: center;
+    background: #fff url(../img/home-bg.png) repeat center top;
+}
+
+.home-gevme .list .main-menu-text:last-child {
+    border-bottom: none;
+}
+
+.home-gevme .pic {
+    text-align: center;
+}
+
+.home-gevme .pic img {
+    width: 49.53%;
+}
+
+.home-gevme ul {
+    padding: 0;
+    margin: 0;
+    list-style: none
+}
+
+.home-gevme .item-thumbnail-left.item-complex {
+    margin: 0 70px;
+    border-bottom: solid 1px #e4e4e4;
+    padding: 0
+}
+
+.home-gevme .item-thumbnail-left.item-complex:first-child {
+    padding-top: 0;
+}
+
+.home-gevme .main-menu-text,
+.home-gevme .main-menu-text .item-content {
+    background: transparent;
+}
+
+.home-gevme .main-menu-text .item-content {
+    margin: 0;
+}
+
+.home-gevme .menu-row-holder {
+    padding: 0;
+    color: #979797;
+    font-size: 6vw;
+    line-height: 20.9vw;
+    letter-spacing: 1px;
+}
+
+.home-gevme .rounded-rectangle {
+    text-align: left;
+}
+
+.home-gevme ul li a {
+    color: #979797;
+    font-size: 23px
+}
+
+.home-gevme .slide-to {
+    background-color: #fff;
+    border: solid 1px #f0f0f0;
+    box-shadow: inset 1px 1px 3px 2px rgba(0, 0, 0, .2);
+    height: 82px;
+    border-radius: 50px;
+    margin-top: 75px;
+    position: relative;
+    margin-left: 35px;
+    margin-right: 35px
+}
+
+.home-gevme .slide-to .slide-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 80px;
+    background-color: #fd3257;
+    line-height: 80px;
+    text-align: center;
+    position: absolute;
+    left: 0;
+    top: 0;
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, .2)
+}
+
+.home-gevme .slide-to-play {
+    font-size: 22px;
+    color: #979797;
+    margin-left: 120px;
+    line-height: 82px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.home-gevme .slide-to-play-text.active {
+    color: #fd3257;
+    animation: blink 3s infinite;
+    -webkit-animation: blink 3s infinite;
+}
+
+@keyframes blink {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@-webkit-keyframes blink {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.selection__arrow img {
+    width: 8px;
+    height: auto;
+}
+
+/*New css modal pages End*/
+
+.toggle .handle {
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+
+.toggle .track {
+    border: solid 1px #e6e6e6;
+}
+
+.toggle.toggle-assertive input:checked + .track {
+    border-color: #fd3257;
+    background-color: #fd3257;
+}
+
+.settings ul li.log-out {
+    border-bottom: 1px solid #c8c7cc;
+}
+
+.button-icon .icon:before, .button-icon.icon:before {
+    font-size: 32px;
+    content: "";
+    background: url("../img/reorder-control.png") no-repeat left top;
+    width: 26px;
+    height: 14px;
+    background-size: 85%;
+    margin-top: 6px;
+}
+
+#iceBreakers .item:nth-child(3), #languageItems .item:nth-child(3),
+#iceBreakers .item:nth-child(4), #languageItems .item:nth-child(4),
+#iceBreakers .item:nth-child(3) .item-content, #languageItems .item:nth-child(3) .item-content,
+#iceBreakers .item:nth-child(4) .item-content, #languageItems .item:nth-child(4) .item-content{
+    border-bottom: 0;
+}
+
+.settings .slider-thumb li {
+    -moz-animation-duration: .5s;
+    -webkit-animation-duration: .5s;
+    animation-duration: .5s;
+}
+
+.bxslider.slider-pic .front img,
+.bxslider.slider-pic .back img,
+.bxslider1.slider-pic .front img,
+.bxslider1.slider-pic .back img {
+/ / height: 175 px !important;
+/ / width: 339 px !important;
+}
 
 /*
- * getComputedStyle from
- * https://github.com/jonathantneal/Polyfills-for-IE8/blob/master/getComputedStyle.js
+ * Poking visuals
+ */
 
- // tb_require('../helpers.js')
- // tb_require('./dom.js')
+.poking {
+    color: black;
+    text-align: center;
+    font-size: 25px;
+    height: 25px;
+    position: fixed;
+    top: calc((100vh - 25px) / 2);
+    width: 100%;
+    animation: blink 3s infinite;
+    -webkit-animation: blink 3s infinite;
+}
 
- /*jshint strict: false, eqnull: true, browser:true, smarttabs:true*/
+.end-call {
+    width: 61px;
+    height: 61px;
+    position: absolute;
+    bottom: 20px;
+    background: url(../img/end-call-icon.png) top left no-repeat;
+    background-size: 100%;
+    left: calc((100% - 61px) / 2);
+}
 
-(function(window, OTHelpers, undefined) {
+.blurred .OT_widget-container {
+    -webkit-filter: grayscale(0.5) blur(17px);
+    filter: grayscale(0.5) blur(17px);
+}
 
-  /*jshint eqnull: true, browser: true */
+.platform-ios.platform-cordova:not(.fullscreen) .bar-header:not(.bar-subheader) > * {
+    margin-top: 0;
+}
 
+.faded {
+    opacity: 0.6;
+}
 
-  function getPixelSize(element, style, property, fontSize) {
-    var sizeWithSuffix = style[property],
-        size = parseFloat(sizeWithSuffix),
-        suffix = sizeWithSuffix.split(/\d/)[0],
-        rootSize;
+/*#screen {*/
+    /*z-index: 999;*/
+    /*width: 100%;*/
+    /*position: absolute;*/
+/*}*/
 
-    fontSize = fontSize != null ?
-        fontSize : /%|em/.test(suffix) && element.parentElement ?
-        getPixelSize(element.parentElement, element.parentElement.currentStyle, 'fontSize', null) :
-        16;
-    rootSize = property === 'fontSize' ?
-        fontSize : /width/i.test(property) ? element.clientWidth : element.clientHeight;
+/*.background-screen {*/
+    /*z-index: 999;*/
+    /*width: 100%;*/
+    /*height: 100%;*/
+/*}*/
 
-    return (suffix === 'em') ?
-    size * fontSize : (suffix === 'in') ?
-    size * 96 : (suffix === 'pt') ?
-    size * 96 / 72 : (suffix === '%') ?
-    size / 100 * rootSize : size;
+/*.background-screen.background-screen--poking {*/
+    /*z-index: 0;*/
+    /*opacity: 0.2;*/
+/*}*/
+
+.relative {
+    height: 100vh;
+}
+
+.modal.in {
+    display: block;
+    opacity: 1;
+}
+
+.poke_background, .poke_background_opacity {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+}
+
+.poke_background_opacity {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+/*
+@media  (min-width: 300px) and (max-width: 376px) {
+  .welcome-givme .pic {
+    padding: 155px 0 90px
   }
+}
+*/
+.item-right-editable.item-reordering {
+    padding-left: 20px;
+}
 
-  function setShortStyleProperty(style, property) {
-    var
-        borderSuffix = property === 'border' ? 'Width' : '',
-        t = property + 'Top' + borderSuffix,
-        r = property + 'Right' + borderSuffix,
-        b = property + 'Bottom' + borderSuffix,
-        l = property + 'Left' + borderSuffix;
+.OT_video-container {
+    position: absolute;
+    right: 10px
+}
 
-    style[property] = (style[t] === style[r] === style[b] === style[l] ? [style[t]]
-        : style[t] === style[b] && style[l] === style[r] ? [style[t], style[r]]
-        : style[l] === style[r] ? [style[t], style[r], style[b]]
-        : [style[t], style[r], style[b], style[l]]).join(' ');
-  }
+video::-webkit-media-controls {
+    display: none;
+}
 
-  function CSSStyleDeclaration(element) {
-    var currentStyle = element.currentStyle,
-        style = this,
-        fontSize = getPixelSize(element, currentStyle, 'fontSize', null),
-        property;
+.popup-container.active .popup {
+    border-radius: 10px;
+    color: #8f8f8f;
+    -webkit-box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.4);
+    -moz-box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.4);
+}
 
-    for (property in currentStyle) {
-      if (/width|height|margin.|padding.|border.+W/.test(property) && style[property] !== 'auto') {
-        style[property] = getPixelSize(element, currentStyle, property, fontSize) + 'px';
-      } else if (property === 'styleFloat') {
-        /*jshint -W069 */
-        style['float'] = currentStyle[property];
-      } else {
-        style[property] = currentStyle[property];
-      }
+.popup-container.active .popup .popup-head h3 {
+    font-family: 'HelveticaNeue', 'Helvetica Neue', 'HelveticaNeueLTStd-Md', Helvetica, Arial, 'Lucida Grande', sans-serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin-bottom: 0;
+    color: #8f8f8f;
+}
+
+.popup-container.active .popup .popup-head h5 {
+    font-size: 17px;
+    color: #8f8f8f;
+}
+
+.popup-container.active .popup .popup-body ul {
+    padding: 0;
+    margin: 0;
+}
+
+.popup-container.active .popup .popup-body ul li {
+    list-style: none;
+    display: inline-block;
+    border-bottom: 1px #e1e1e1 solid;
+    width: 100%;
+    padding: 10px;
+}
+
+.popup-container.active .popup .popup-buttons {
+    border-top: 1px #e1e1e1 solid;
+}
+
+.popup-container.active .popup .popup-buttons button {
+    color: #fd3257;
+    font-size: 25px;
+}
+
+.popup-container.active .popup .popup-buttons button.back {
+    border-right: 1px #e1e1e1 solid;
+    padding: 10px 0 10px 10px;
+    color: #8f8f8f;
+}
+
+.popup-container.active .popup .popup-buttons button.send {
+    border-left: 1px #fff solid;
+    padding: 10px 10px 10px 0;
+}
+
+.popup-container.active .popup .popup-body input {
+    background-color: transparent;
+    border: 0;
+    padding: 0 10px;
+    width: 100%;
+    font-size: 17px;
+    outline: 0;
+    height: 22px;
+}
+
+.popup-container.active .popup .popup-body ul li:last-child {
+    border-bottom: 0;
+}
+
+.blur {
+    -webkit-filter: blur(5px);
+    -moz-filter: blur(5px);
+    -o-filter: blur(5px);
+    -ms-filter: blur(5px);
+    filter: blur(5px);
+}
+
+.backdrop.active {
+    -webkit-filter: blur(5px);
+    -moz-filter: blur(5px);
+    -o-filter: blur(5px);
+    -ms-filter: blur(5px);
+    filter: blur(5px);
+    z-index: 1004;
+}
+
+.popup-container {
+    z-index: 1005;
+}
+
+.popup-container.active .red-twin-lolly {
+    background: url(../img/ice-lolly-red-twin.png) no-repeat center;
+    background-size: 67px 40px;
+    justify-content: center;
+    width: 100%;
+    height: 40px;
+    display: block;
+    margin-bottom: 20px;
+}
+
+.popup-container.active .phone {
+    background: url('../img/phone.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup-container.active .facebook {
+    background: url('../img/facebook.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup-container.active .snapchat {
+    background: url('../img/snapchat.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup-container.active .instagram {
+    background: url('../img/instagram.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup-container.active .skype {
+    background: url('../img/skype.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup-container.active .phoneg {
+    background: url('../img/phoneg.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup-container.active .facebookg {
+    background: url('../img/facebookg.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup-container.active .snapchatg {
+    background: url('../img/snapchatg.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup-container.active .instagramg {
+    background: url('../img/instagramg.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup-container.active .skypeg {
+    background: url('../img/skypeg.png') no-repeat center;
+    background-size: 34px;
+    vertical-align: middle;
+}
+
+.popup.active .lightning {
+    background: url(../img/lightning.png) no-repeat center;
+    background-size: 31px 40px;
+    justify-content: center;
+    width: 100%;
+    height: 40px;
+    display: block;
+    margin-bottom: 20px;
+    margin-top: 20px;
+}
+
+.newProfilePhoto {
+    width: 100%;
+}
+
+.OT_video-container video {
+   display: none;
+}
+
+/*Fix Toggle Responsive*/
+
+
+.toggle{
+    margin: 1.6vw 3.86vw 0 0;
+    padding: 0;
+}
+.left-list span{
+    top: 0;
+    height: 100%;
+}
+.toggle .track{
+    width: 13.6vw;
+    height: 8.26vw;
+    border-radius: 8.26vw;
+}
+.toggle .handle{
+    width: 7.46vw;
+    height: 7.46vw;
+    border-radius: 50%;
+    top: 0.4vw;
+    left:0;
+}
+.toggle input:checked + .track .handle {
+    -webkit-transform: translate3d(6vw, 0, 0);
+    transform: translate3d(6vw, 0, 0);
+    background-color: #fff; }
+
+
+.platform-android .bar .title{
+    font-size: 5vw;
+}
+.settings .label-title{
+    top:auto;
+    margin-top: 6.93vw;
+    padding: 0 4.26vw;
+    font-size: 3.73vw;
+}
+.settings .ngrs-range-slider{
+    margin: 2.13vw 0 0 0!important;
+    padding: 0!important;
+    height: 11.73vw;
+}
+.list-block-selection .item-options{
+    right: 15px;
+}
+.list-block-selection .item{
+    padding: 0 15px;
+}
+@media (min-width: 750px) {
+    .home-gevme .menu-row-holder {
+        font-size: 45px;
     }
 
-    setShortStyleProperty(style, 'margin');
-    setShortStyleProperty(style, 'padding');
-    setShortStyleProperty(style, 'border');
-
-    style.fontSize = fontSize + 'px';
-
-    return style;
-  }
-
-  CSSStyleDeclaration.prototype = {
-    constructor: CSSStyleDeclaration,
-    getPropertyPriority: function () {},
-    getPropertyValue: function ( prop ) {
-      return this[prop] || '';
-    },
-    item: function () {},
-    removeProperty: function () {},
-    setProperty: function () {},
-    getPropertyCSSValue: function () {}
-  };
-
-  function getComputedStyle(element) {
-    return new CSSStyleDeclaration(element);
-  }
-
-
-  OTHelpers.getComputedStyle = function(element) {
-    if(element &&
-        element.ownerDocument &&
-        element.ownerDocument.defaultView &&
-        element.ownerDocument.defaultView.getComputedStyle) {
-      return element.ownerDocument.defaultView.getComputedStyle(element);
-    } else {
-      return getComputedStyle(element);
-    }
-  };
-
-})(window, window.OTHelpers);
-
-// DOM Attribute helpers helpers
-
-/*jshint browser:true, smarttabs:true*/
-
-// tb_require('../helpers.js')
-// tb_require('./dom.js')
-
-(function(window, OTHelpers, undefined) {
-
-  OTHelpers.addClass = function(element, value) {
-    // Only bother targeting Element nodes, ignore Text Nodes, CDATA, etc
-    if (element.nodeType !== 1) {
-      return;
+    .welcome-givme .welcome-title {
+        font-size: 49px;
     }
 
-    var classNames = OTHelpers.trim(value).split(/\s+/),
-        i, l;
-
-    if (OTHelpers.supportsClassList()) {
-      for (i=0, l=classNames.length; i<l; ++i) {
-        element.classList.add(classNames[i]);
-      }
-
-      return;
+    .welcome-givme .welcome-subtitle {
+        font-size: 35px;
     }
 
-    // Here's our fallback to browsers that don't support element.classList
-
-    if (!element.className && classNames.length === 1) {
-      element.className = value;
-    }
-    else {
-      var setClass = " " + element.className + " ";
-
-      for (i=0, l=classNames.length; i<l; ++i) {
-        if ( !~setClass.indexOf( " " + classNames[i] + " ")) {
-          setClass += classNames[i] + " ";
-        }
-      }
-
-      element.className = OTHelpers.trim(setClass);
+    .welcome-givme .fb-login .login-with-fb-btn {
+        font-size: 44px;
     }
 
-    return this;
-  };
-
-  OTHelpers.removeClass = function(element, value) {
-    if (!value) return;
-
-    // Only bother targeting Element nodes, ignore Text Nodes, CDATA, etc
-    if (element.nodeType !== 1) {
-      return;
+    .welcome-givme p.note {
+        font-size: 21px;
     }
 
-    var newClasses = OTHelpers.trim(value).split(/\s+/),
-        i, l;
-
-    if (OTHelpers.supportsClassList()) {
-      for (i=0, l=newClasses.length; i<l; ++i) {
-        element.classList.remove(newClasses[i]);
-      }
-
-      return;
+    .left-list-security .list {
+        margin-top: 59px;
     }
 
-    var className = (" " + element.className + " ").replace(/[\s+]/, ' ');
-
-    for (i=0,l=newClasses.length; i<l; ++i) {
-      className = className.replace(' ' + newClasses[i] + ' ', ' ');
+    .settings .left-list-security .list .selection__content {
+        font-size: 35px;
     }
 
-    element.className = OTHelpers.trim(className);
-
-    return this;
-  };
-
-
-  /**
-   * Methods to calculate element widths and heights.
-   */
-
-  var _width = function(element) {
-        if (element.offsetWidth > 0) {
-          return element.offsetWidth + 'px';
-        }
-
-        return OTHelpers.css(element, 'width');
-      },
-
-      _height = function(element) {
-        if (element.offsetHeight > 0) {
-          return element.offsetHeight + 'px';
-        }
-
-        return OTHelpers.css(element, 'height');
-      };
-
-  OTHelpers.width = function(element, newWidth) {
-    if (newWidth) {
-      OTHelpers.css(element, 'width', newWidth);
-      return this;
-    }
-    else {
-      if (OTHelpers.isDisplayNone(element)) {
-        // We can't get the width, probably since the element is hidden.
-        return OTHelpers.makeVisibleAndYield(element, function() {
-          return _width(element);
-        });
-      }
-      else {
-        return _width(element);
-      }
-    }
-  };
-
-  OTHelpers.height = function(element, newHeight) {
-    if (newHeight) {
-      OTHelpers.css(element, 'height', newHeight);
-      return this;
-    }
-    else {
-      if (OTHelpers.isDisplayNone(element)) {
-        // We can't get the height, probably since the element is hidden.
-        return OTHelpers.makeVisibleAndYield(element, function() {
-          return _height(element);
-        });
-      }
-      else {
-        return _height(element);
-      }
-    }
-  };
-
-// Centers +element+ within the window. You can pass through the width and height
-// if you know it, if you don't they will be calculated for you.
-  OTHelpers.centerElement = function(element, width, height) {
-    if (!width) width = parseInt(OTHelpers.width(element), 10);
-    if (!height) height = parseInt(OTHelpers.height(element), 10);
-
-    var marginLeft = -0.5 * width + "px";
-    var marginTop = -0.5 * height + "px";
-    OTHelpers.css(element, "margin", marginTop + " 0 0 " + marginLeft);
-    OTHelpers.addClass(element, "OT_centered");
-  };
-
-})(window, window.OTHelpers);
-
-// CSS helpers helpers
-
-/*jshint browser:true, smarttabs:true*/
-
-// tb_require('../helpers.js')
-// tb_require('./dom.js')
-// tb_require('./getcomputedstyle.js')
-
-(function(window, OTHelpers, undefined) {
-
-  var displayStateCache = {},
-      defaultDisplays = {};
-
-  var defaultDisplayValueForElement = function(element) {
-    if (defaultDisplays[element.ownerDocument] &&
-        defaultDisplays[element.ownerDocument][element.nodeName]) {
-      return defaultDisplays[element.ownerDocument][element.nodeName];
+    .settings ul.left-list {
+        margin-top: 59px;
     }
 
-    if (!defaultDisplays[element.ownerDocument]) defaultDisplays[element.ownerDocument] = {};
-
-    // We need to know what display value to use for this node. The easiest way
-    // is to actually create a node and read it out.
-    var testNode = element.ownerDocument.createElement(element.nodeName),
-        defaultDisplay;
-
-    element.ownerDocument.body.appendChild(testNode);
-    defaultDisplay = defaultDisplays[element.ownerDocument][element.nodeName] =
-        OTHelpers.css(testNode, 'display');
-
-    OTHelpers.removeElement(testNode);
-    testNode = null;
-
-    return defaultDisplay;
-  };
-
-  var isHidden = function(element) {
-    var computedStyle = OTHelpers.getComputedStyle(element);
-    return computedStyle.getPropertyValue('display') === 'none';
-  };
-
-  OTHelpers.show = function(element) {
-    var display = element.style.display;
-
-    if (display === '' || display === 'none') {
-      element.style.display = displayStateCache[element] || '';
-      delete displayStateCache[element];
+    .settings ul.left-list {
+        padding-left: 32px;
     }
-
-    if (isHidden(element)) {
-      // It's still hidden so there's probably a stylesheet that declares this
-      // element as display:none;
-      displayStateCache[element] = 'none';
-
-      element.style.display = defaultDisplayValueForElement(element);
+    .settings ul li {
+        height: 88px;
+        line-height: 88px;
+        font-size: 35px;
     }
-
-    return this;
-  };
-
-  OTHelpers.hide = function(element) {
-    if (element.style.display === 'none') return;
-
-    displayStateCache[element] = element.style.display;
-    element.style.display = 'none';
-
-    return this;
-  };
-
-  OTHelpers.css = function(element, nameOrHash, value) {
-    if (typeof(nameOrHash) !== 'string') {
-      var style = element.style;
-
-      for (var cssName in nameOrHash) {
-        style[cssName] = nameOrHash[cssName];
-      }
-
-      return this;
-
-    } else if (value !== undefined) {
-      element.style[nameOrHash] = value;
-      return this;
-
-    } else {
-      // Normalise vendor prefixes from the form MozTranform to -moz-transform
-      // except for ms extensions, which are weird...
-
-      var name = nameOrHash.replace( /([A-Z]|^ms)/g, '-$1' ).toLowerCase(),
-          computedStyle = OTHelpers.getComputedStyle(element),
-          currentValue = computedStyle.getPropertyValue(name);
-
-      if (currentValue === '') {
-        currentValue = element.style[name];
-      }
-
-      return currentValue;
+    .small-text {
+        font-size: 28px;
+        padding-left: 32px;
     }
-  };
-
-
-// Apply +styles+ to +element+ while executing +callback+, restoring the previous
-// styles after the callback executes.
-  OTHelpers.applyCSS = function(element, styles, callback) {
-    var oldStyles = {},
-        name,
-        ret;
-
-    // Backup the old styles
-    for (name in styles) {
-      if (styles.hasOwnProperty(name)) {
-        // We intentionally read out of style here, instead of using the css
-        // helper. This is because the css helper uses querySelector and we
-        // only want to pull values out of the style (domeElement.style) hash.
-        oldStyles[name] = element.style[name];
-
-        OTHelpers.css(element, name, styles[name]);
-      }
+    .settings ul.bad-things {
+        padding-top: 54px;
+        padding-bottom: 30px;
     }
-
-    ret = callback();
-
-    // Restore the old styles
-    for (name in styles) {
-      if (styles.hasOwnProperty(name)) {
-        OTHelpers.css(element, name, oldStyles[name] || '');
-      }
+    .settings ul.bad-things p.small-text{
+        margin-bottom: 20px;
     }
-
-    return ret;
-  };
-
-// Make +element+ visible while executing +callback+.
-  OTHelpers.makeVisibleAndYield = function(element, callback) {
-    // find whether it's the element or an ancester that's display none and
-    // then apply to whichever it is
-    var targetElement = OTHelpers.findElementWithDisplayNone(element);
-    if (!targetElement) return;
-
-    return OTHelpers.applyCSS(targetElement, {
-      display: 'block',
-      visibility: 'hidden'
-    }, callback);
-  };
-
-})(window, window.OTHelpers);
-
-// AJAX helpers
-
-/*jshint browser:true, smarttabs:true*/
-
-// tb_require('../helpers.js')
-
-(function(window, OTHelpers, undefined) {
-
-  function formatPostData(data) { //, contentType
-    // If it's a string, we assume it's properly encoded
-    if (typeof(data) === 'string') return data;
-
-    var queryString = [];
-
-    for (var key in data) {
-      queryString.push(
-          encodeURIComponent(key) + '=' + encodeURIComponent(data[key])
-      );
+    a.deactivate-account-link {
+        font-size: 35px;
     }
-
-    return queryString.join('&').replace(/\+/g, '%20');
-  }
-
-  OTHelpers.getJSON = function(url, options, callback) {
-    options = options || {};
-
-    var done = function(error, event) {
-      if(error) {
-        callback(error, event && event.target && event.target.responseText);
-      } else {
-        var response;
-
-        try {
-          response = JSON.parse(event.target.responseText);
-        } catch(e) {
-          // Badly formed JSON
-          callback(e, event && event.target && event.target.responseText);
-          return;
-        }
-
-        callback(null, response, event);
-      }
-    };
-
-    if(options.xdomainrequest) {
-      OTHelpers.xdomainRequest(url, { method: 'GET' }, done);
-    } else {
-      var extendedHeaders = OTHelpers.extend({
-        'Accept': 'application/json'
-      }, options.headers || {});
-
-      OTHelpers.get(url, OTHelpers.extend(options || {}, {
-        headers: extendedHeaders
-      }), done);
+    .toggle{
+        margin: 12px 29px 0 0;
     }
-
-  };
-
-  OTHelpers.xdomainRequest = function(url, options, callback) {
-    /*global XDomainRequest*/
-    var xdr = new XDomainRequest(),
-        _options = options || {},
-        _method = _options.method;
-
-    if(!_method) {
-      callback(new Error('No HTTP method specified in options'));
-      return;
+    .toggle .track{
+        width: 102px;
+        height: 62px;
+        border-radius: 62px;
     }
-
-    _method = _method.toUpperCase();
-
-    if(!(_method === 'GET' || _method === 'POST')) {
-      callback(new Error('HTTP method can only be '));
-      return;
+    .toggle .handle{
+        width: 56px;
+        height: 56px;
+        top: 3px;
     }
-
-    function done(err, event) {
-      xdr.onload = xdr.onerror = xdr.ontimeout = function() {};
-      xdr = void 0;
-      callback(err, event);
+    .toggle input:checked + .track .handle {
+        -webkit-transform: translate3d(45px, 0, 0);
+        transform: translate3d(45px, 0, 0);
     }
 
 
-    xdr.onload = function() {
-      done(null, {
-        target: {
-          responseText: xdr.responseText,
-          headers: {
-            'content-type': xdr.contentType
-          }
-        }
-      });
-    };
-
-    xdr.onerror = function() {
-      done(new Error('XDomainRequest of ' + url + ' failed'));
-    };
-
-    xdr.ontimeout = function() {
-      done(new Error('XDomainRequest of ' + url + ' timed out'));
-    };
-
-    xdr.open(_method, url);
-    xdr.send(options.body && formatPostData(options.body));
-
-  };
-
-  OTHelpers.request = function(url, options, callback) {
-    var request = new XMLHttpRequest(),
-        _options = options || {},
-        _method = _options.method;
-
-    if(!_method) {
-      callback(new Error('No HTTP method specified in options'));
-      return;
+    .settings .label-title{
+        margin-top: 52px;
+        padding: 0 32px;
+        font-size: 28px;
+    }
+    .label-title .pull-right {
+        font-size: 32px;
+    }
+    .platform-android .bar .title{
+        font-size: 38px;
+    }
+    .settings .ngrs-range-slider{
+        margin: 16px 0 0 0!important;
+        padding: 0!important;
+        height: 88px;
+    }
+    .ngrs-range-slider .ngrs-handle {
+        height: 55px !important;
+        width: 55px !important;
+        margin: 0 0 0 -27px!important;
+    }
+    .ngrs-range-slider .ngrs-runner {
+        height: 55px !important;
+        overflow: visible !important;
+        margin: 15px 55px 0 55px !important;
     }
 
-    // Setup callbacks to correctly respond to success and error callbacks. This includes
-    // interpreting the responses HTTP status, which XmlHttpRequest seems to ignore
-    // by default.
-    if(callback) {
-      request.addEventListener('load', function(event) {
-        var status = event.target.status;
 
-        // We need to detect things that XMLHttpRequest considers a success,
-        // but we consider to be failures.
-        if ( status >= 200 && status < 300 || status === 304 ) {
-          callback(null, event);
-        } else {
-          callback(event);
-        }
-      }, false);
-
-      request.addEventListener('error', callback, false);
+    .settings .slider-thumb--pictures {
+        margin-top: 20px;
+        max-height: none;
+        overflow: hidden;
+        padding: 15px 0;
+    }
+    .settings .slider-thumb li .cross-icon {
+        width: 90px;
+        height: 90px;
+        background-size: 30px;
+    }
+    .settings .slider-thumb li.add {
+        border: solid 4px #e1e1e1;
+        width: 90px;
+        height: 90px;
+        background-size: 22px;
+    }
+    .settings .slider-thumb li {
+        width: 94px;
+        height: 94px;
+        margin-right: 38px;
+    }
+    .slider-thumb img {
+        width: 90px;
+        height: 90px;
+        border: 4px solid white;
+    }
+    .item.add-more input {
+        font-size: 35px;
+        height: 88px;
+        line-height: 88px;
+        margin-left: 32px;
     }
 
-    request.open(options.method, url, true);
-
-    if (!_options.headers) _options.headers = {};
-
-    for (var name in _options.headers) {
-      request.setRequestHeader(name, _options.headers[name]);
+    .welcome-givme .pic {
+        margin-top: 317px;
+        margin-bottom: 180px;
+    }
+    .welcome-givme .fb-login {
+        padding: 190px;
+    }
+    .welcome-givme .fb-login .login-with-fb-btn {
+        padding: 38px 15px;
+    }
+    .welcome-givme p.note {
+        margin-top: 50px;
+    }
+    .home-gevme .menu-row-holder {
+        line-height: 157px;
     }
 
-    request.send(options.body && formatPostData(options.body));
-  };
-
-  OTHelpers.get = function(url, options, callback) {
-    var _options = OTHelpers.extend(options || {}, {
-      method: 'GET'
-    });
-    OTHelpers.request(url, _options, callback);
-  };
-
-  OTHelpers.post = function(url, options, callback) {
-    var _options = OTHelpers.extend(options || {}, {
-      method: 'POST'
-    });
-
-    if(_options.xdomainrequest) {
-      OTHelpers.xdomainRequest(url, _options, callback);
-    } else {
-      OTHelpers.request(url, _options, callback);
+    .modal-item .modal-dialog {
+        width: 565px;
+        height: 520px;
     }
-  };
+    .modal-item .modal-info .icon {
+        margin: 64px auto 0 auto;
+        height: 80px;
+    }
+    .modal-item .modal-info p {
+        font-size: 35px;
+    }
+    .modal-item .modal-info p.title {
+        padding: 70px 0;
+    }
+    .modal-item .modal-info p.title span {
+        font-size: 48px;
+    }
+    .modal-item .modal-footer {
+        height: 129px;
+    }
+    .modal-item .modal-footer .buttons li {
+        font-size: 50px;
+    }
+    .modal-item .modal-footer .buttons li a {
+        line-height: 129px;
+    }
+    .modal-item .modal-body {
+        height: 391px!important;
+    }
 
-})(window, window.OTHelpers);
+    .modal-item .cant-talk {
+        font-size: 29px;
+        margin-top: 8px;
+    }
+    .modal-item .modal-footer .time {
+        font-size: 50px;
+        line-height: 129px;
+    }
+}
