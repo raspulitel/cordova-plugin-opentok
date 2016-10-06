@@ -9,6 +9,10 @@
     <license>Apache 2.0</license>
     <keywords>opentok,tokbox</keywords>
 
+    <js-module src="www/opentok.js" name="OT">
+      <clobbers target="OT" />
+    </js-module>
+    
     <platform name="android">
       <asset src="www/opentok.js" target="opentok.js" />
 
