@@ -379,14 +379,6 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
         streamCollection = new HashMap<String, Stream>();
         subscriberCollection = new HashMap<String, RunnableSubscriber>();
 
-        // Make the webview transparent so we can see the video behind
-        webView.getView().setBackgroundColor(0);
-        try {
-            ((ViewGroup) webView.getView().getParent()).setBackgroundColor(0);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to set parent background to WHITE");
-        }
-
         super.initialize(cordova, webView);
     }
 
@@ -410,6 +402,14 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
                 return true;
             }
         } else if (action.equals("initSession")) {
+            // Make the webview transparent so we can see the video behind
+                    webView.getView().setBackgroundColor(0);
+                    try {
+                        ((ViewGroup) webView.getView().getParent()).setBackgroundColor(0);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Failed to set parent background to WHITE");
+                    }
+
             Log.i(TAG, "created new session with data: " + args.toString());
             mSession = new Session(this.cordova.getActivity().getApplicationContext(), args.getString(0), args.getString(1));
             mSession.setSessionListener(this);
@@ -526,6 +526,15 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
     @Override
     public void onDisconnected(Session arg0) {
         sessionConnected = false;
+
+        // Make the webview transparent so we can see the video behind
+                _webView.getView().setBackgroundColor(Color.parseColor("#ffffff"));
+
+                try {
+                    ((ViewGroup) _webView.getView().getParent()).setBackgroundColor(Color.parseColor("#ffffff"));
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to set parent background to WHITE");
+                }
 
         //we should set this now as there is a bug with the DefaultAudioDevice not applying this on a second call
         AudioManager audioManager = ((AudioManager) this.cordova.getActivity().getApplicationContext()
@@ -768,4 +777,3 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
         }
     }
 }
-
