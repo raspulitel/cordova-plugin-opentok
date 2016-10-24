@@ -1,5 +1,6 @@
 package com.tokbox.cordova;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -16,12 +17,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.graphics.Color;
 import android.media.AudioManager;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,6 +40,8 @@ import com.opentok.android.Stream.StreamVideoType;
 import com.opentok.android.Subscriber;
 import com.opentok.android.SubscriberKit;
 import android.util.DisplayMetrics;
+
+import android.graphics.Bitmap;
 
 
 public class OpenTokAndroidPlugin extends CordovaPlugin implements
@@ -492,6 +497,11 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
             }
         } else if (action.equals("exceptionHandler")) {
 
+        } else if( action.equals("screenshot")){
+            String stream = takeScreenShot();
+            JSONObject data = new JSONObject();
+            data.put("stream", stream);
+            callbackContext.success(data.toString());
         }
         return true;
     }
@@ -775,5 +785,19 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
         if (mSession != null) {
             mSession.disconnect();
         }
+    }
+
+    public String takeScreenShot(){
+        View v1 = cordova.getActivity().getWindow().getDecorView().getRootView();
+        v1.setDrawingCacheEnabled(true);
+        Bitmap bitmap = Bitmap.createBitmap(v1.getDrawingCache());
+        v1.setDrawingCacheEnabled(false);
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream.toByteArray();
+        String imgageBase64 = Base64.encodeToString(byteArray, Base64.DEFAULT);
+
+        return imgageBase64;
     }
 }
