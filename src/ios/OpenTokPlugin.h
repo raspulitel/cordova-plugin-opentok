@@ -40,7 +40,7 @@
 
 // HouseKeeping
 
-
+-(NSString *)getScreenshotImage;
 
 - (void)TBTesting:(CDVInvokedUrlCommand*)command;
 
