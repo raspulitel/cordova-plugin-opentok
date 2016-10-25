@@ -43,7 +43,6 @@ import android.util.DisplayMetrics;
 
 import android.graphics.Bitmap;
 
-
 public class OpenTokAndroidPlugin extends CordovaPlugin implements
         Session.SessionListener, Session.ConnectionListener, Session.SignalListener,
         PublisherKit.PublisherListener, Session.StreamPropertiesListener {
@@ -62,6 +61,7 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
     static JSONObject viewList = new JSONObject();
     static CordovaInterface _cordova;
     static CordovaWebView _webView;
+    static String stream_id = null;
 
 
     public class RunnableUpdateViews implements Runnable {
@@ -498,10 +498,18 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
         } else if (action.equals("exceptionHandler")) {
 
         } else if( action.equals("screenshot")){
-            String stream = takeScreenShot();
-            JSONObject data = new JSONObject();
-            data.put("stream", stream);
-            callbackContext.success(data.toString());
+            RunnableSubscriber runsub = subscriberCollection.get(stream_id);
+            ((BasicCustomVideoRenderer) runsub.mSubscriber.getRenderer()).saveScreenshot(true);
+            Bitmap bitmap = ((BasicCustomVideoRenderer) runsub.mSubscriber.getRenderer()).getBitmap() ;
+            while(bitmap == null){
+                bitmap = ((BasicCustomVideoRenderer) runsub.mSubscriber.getRenderer()).getBitmap();
+            }
+            ((BasicCustomVideoRenderer) runsub.mSubscriber.getRenderer()).setBitmapNull();
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+            byte[] byteArray = byteArrayOutputStream.toByteArray();
+            String imgageBase64 = Base64.encodeToString(byteArray, Base64.DEFAULT);
+            callbackContext.success(imgageBase64);
         }
         return true;
     }
