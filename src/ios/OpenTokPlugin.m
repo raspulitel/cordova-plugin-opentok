@@ -487,7 +487,33 @@
     [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 }
 
+- (void) screenshot:(CDVInvokedUrlCommand*)command {
+    NSString* myString = [self getScreenshotImage];
+    
+    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:myString];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
 
+-(NSString *)getScreenshotImage {
+    // Define the dimensions of the screenshot you want to take (the entire screen in this case)
+    CGSize size =  [[UIScreen mainScreen] bounds].size;
+
+    UIWindow *window = [UIApplication sharedApplication].keyWindow;
+    UIViewController *rootViewController = window.rootViewController;
+    
+    // Create the screenshot
+    UIGraphicsBeginImageContext(size);
+    // Put everything in the current view into the screenshot
+    [[rootViewController.view layer] renderInContext:UIGraphicsGetCurrentContext()];
+    // Save the current image context info into a UIImage
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    NSData *data = UIImagePNGRepresentation(newImage);
+    
+    return [data base64EncodedStringWithOptions:NSDataBase64EncodingEndLineWithLineFeed];
+
+}
 
 /***** Notes
 
