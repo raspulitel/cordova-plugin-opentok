@@ -19,6 +19,9 @@
 
       <source-file src="src/android/com/tokbox/cordova/OpenTokAndroidPlugin.java"
         target-dir="src/com/tokbox/cordova/" />
+        
+      <source-file src="src/android/com/tokbox/cordova/BasicCustomVideoRenderer.java"
+        target-dir="src/com/tokbox/cordova/" />
 
       <config-file target="AndroidManifest.xml" parent="/manifest">
         <uses-permission android:name="android.permission.CAMERA" />
