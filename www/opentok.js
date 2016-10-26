@@ -1,4 +1,11 @@
 window.OT = {
+    takeScreen: function (callback) {
+        Cordova.exec(function (data) {
+            if(typeof callback === 'function'){
+                callback(data);
+            }
+        }, TBError, OTPlugin, "screenshot", []);
+    },
   checkSystemRequirements: function() {
     return 1;
   },

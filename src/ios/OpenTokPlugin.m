@@ -7,6 +7,8 @@
 
 #import "OpentokPlugin.h"
 
+static NSString * SID_S;
+
 @implementation OpenTokPlugin{
     OTSession* _session;
     OTPublisher* _publisher;
@@ -218,7 +220,8 @@
 
     // Get Parameters
     NSString* sid = [command.arguments objectAtIndex:0];
-
+    
+    SID_S = sid;
 
     int top = [[command.arguments objectAtIndex:1] intValue];
     int left = [[command.arguments objectAtIndex:2] intValue];
@@ -487,7 +490,36 @@
     [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 }
 
+- (void) screenshot:(CDVInvokedUrlCommand*)command {
+    NSString* myString = [self getScreenshotImage];
+    
+    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:myString];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
 
+-(NSString *)getScreenshotImage {
+    // Define the dimensions of the screenshot you want to take (the entire screen in this case)
+   
+    OTSubscriber * subscriber = [subscriberDictionary objectForKey:SID_S];
+    
+    UIView* screenCapture = [subscriber.view
+                             snapshotViewAfterScreenUpdates:YES];
+    [subscriber.view addSubview:screenCapture];
+    
+    UIGraphicsBeginImageContextWithOptions(subscriber.view.bounds.size,
+                                           NO, [UIScreen mainScreen].scale);
+    [subscriber.view drawViewHierarchyInRect:subscriber.view.bounds
+               afterScreenUpdates:YES];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    [screenCapture removeFromSuperview];
+    
+    NSData *data = UIImagePNGRepresentation(image);
+    
+    return [data base64EncodedStringWithOptions:NSDataBase64EncodingEndLineWithLineFeed];
+
+}
 
 /***** Notes
 
