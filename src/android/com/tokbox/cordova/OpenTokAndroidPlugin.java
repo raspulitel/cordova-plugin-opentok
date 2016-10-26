@@ -277,6 +277,7 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
             if (mSubscriber == null) {
                 logMessage("NEW SUBSCRIBER BEING CREATED");
                 mSubscriber = new Subscriber(cordova.getActivity(), mStream);
+                mSubscriber.setRenderer(new BasicCustomVideoRenderer(cordova.getActivity().getApplicationContext()));
                 mSubscriber.setVideoListener(this);
                 mSubscriber.setSubscriberListener(this);
                 //TODO: make this configurable
@@ -483,6 +484,7 @@ public class OpenTokAndroidPlugin extends CordovaPlugin implements
             Stream stream = streamCollection.get(args.getString(0));
             RunnableSubscriber runsub = new RunnableSubscriber(args, stream);
             subscriberCollection.put(stream.getStreamId(), runsub);
+            stream_id = stream.getStreamId();
         } else if (action.equals("updateView")) {
             if (args.getString(0).equals("TBPublisher") && myPublisher != null && sessionConnected) {
                 Log.i(TAG, "updating view for publisher");
