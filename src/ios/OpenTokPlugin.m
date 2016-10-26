@@ -7,6 +7,8 @@
 
 #import "OpentokPlugin.h"
 
+static NSString * SID_S;
+
 @implementation OpenTokPlugin{
     OTSession* _session;
     OTPublisher* _publisher;
@@ -218,7 +220,8 @@
 
     // Get Parameters
     NSString* sid = [command.arguments objectAtIndex:0];
-
+    
+    SID_S = sid;
 
     int top = [[command.arguments objectAtIndex:1] intValue];
     int left = [[command.arguments objectAtIndex:2] intValue];
@@ -496,20 +499,23 @@
 
 -(NSString *)getScreenshotImage {
     // Define the dimensions of the screenshot you want to take (the entire screen in this case)
-    CGSize size =  [[UIScreen mainScreen] bounds].size;
-
-    UIWindow *window = [UIApplication sharedApplication].keyWindow;
-    UIViewController *rootViewController = window.rootViewController;
+   
+    OTSubscriber * subscriber = [subscriberDictionary objectForKey:SID_S];
     
-    // Create the screenshot
-    UIGraphicsBeginImageContext(size);
-    // Put everything in the current view into the screenshot
-    [[rootViewController.view layer] renderInContext:UIGraphicsGetCurrentContext()];
-    // Save the current image context info into a UIImage
-    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIView* screenCapture = [subscriber.view
+                             snapshotViewAfterScreenUpdates:YES];
+    [subscriber.view addSubview:screenCapture];
+    
+    UIGraphicsBeginImageContextWithOptions(subscriber.view.bounds.size,
+                                           NO, [UIScreen mainScreen].scale);
+    [subscriber.view drawViewHierarchyInRect:subscriber.view.bounds
+               afterScreenUpdates:YES];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     
-    NSData *data = UIImagePNGRepresentation(newImage);
+    [screenCapture removeFromSuperview];
+    
+    NSData *data = UIImagePNGRepresentation(image);
     
     return [data base64EncodedStringWithOptions:NSDataBase64EncodingEndLineWithLineFeed];
 
