@@ -1,3 +1,4 @@
+cordova.define("com.tokbox.cordova.opentok.OT", function(require, exports, module) {
 window.OT = {
     takeScreen: function (callback) {
         Cordova.exec(function (data) {
@@ -210,7 +211,7 @@ replaceWithVideoStream = function(divName, streamId, properties) {
   element.style.width = properties.width + "px";
   element.style.height = properties.height + "px";
   element.style.overflow = "hidden";
-  element.style['background-color'] = "#000000";
+  element.style['background-color'] = "transparent";
   streamElements[streamId] = element;
   internalDiv = document.createElement("div");
   internalDiv.setAttribute("class", VideoContainerClass);
@@ -221,7 +222,7 @@ replaceWithVideoStream = function(divName, streamId, properties) {
   videoElement = document.createElement("video");
   videoElement.style.width = "100%";
   videoElement.style.height = "100%";
-  internalDiv.appendChild(videoElement);
+//  internalDiv.appendChild(videoElement);
   element.appendChild(internalDiv);
   return element;
 };
@@ -925,7 +926,7 @@ StringSplitter = "$2#9$";
 
 DefaultWidth = 264;
 
-DefaultHeight = 198;
+DefaultHeight = 500;
 ;/**
  * @license  Common JS Helpers on OpenTok 0.2.0 1f056b9 master
  * http://www.tokbox.com/
@@ -3544,3 +3545,5 @@ DefaultHeight = 198;
   };
 
 })(window, window.OTHelpers);
+
+});
