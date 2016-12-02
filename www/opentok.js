@@ -1,4 +1,3 @@
-cordova.define("com.tokbox.cordova.opentok.OT", function(require, exports, module) {
 window.OT = {
     takeScreen: function (callback) {
         Cordova.exec(function (data) {
@@ -3545,5 +3544,3 @@ DefaultHeight = 500;
   };
 
 })(window, window.OTHelpers);
-
-});
