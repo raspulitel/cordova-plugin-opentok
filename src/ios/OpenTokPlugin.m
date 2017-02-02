@@ -585,7 +585,7 @@ static NSString * SID_S;
     stringEvenKey = isEnabled ? @"subscriberVideoEnabled" : @"subscriberVideoDisabled";
     
     [data setValue:result forKey:@"OTSubscriberVideoEventReason"];
-    [self triggerJSEvent:stringEvenKey withType:stringEvenKey withData:data];
+    [self triggerJSEvent:@"sessionEvents" withType:stringEvenKey withData:data];
 }
 
 @end
