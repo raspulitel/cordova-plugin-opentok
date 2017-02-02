@@ -10,7 +10,7 @@
 #import <UIKit/UIKit.h>
 #import <Opentok/Opentok.h>
 
-@interface OpenTokPlugin : CDVPlugin <OTSessionDelegate, OTPublisherDelegate, OTSubscriberKitDelegate>
+@interface OpenTokPlugin : CDVPlugin <OTSessionDelegate, OTPublisherDelegate, OTSubscriberKitDelegate, OTSubscriberDelegate>
 
 @property(nonatomic, copy) NSString* exceptionId;
 

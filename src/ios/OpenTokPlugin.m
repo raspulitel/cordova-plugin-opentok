@@ -539,5 +539,53 @@ static NSString * SID_S;
 
  ******/
 
+#pragma mark - OTSubscriberDelegate Listeners
+
+- (void)subscriberVideoDataReceived:(OTSubscriber *)subscriber {
+    
+}
+
+- (void)subscriberVideoEnabled:(OTSubscriberKit *)subscriber reason:(OTSubscriberVideoEventReason)reason {
+ 
+    [self subscriberVideoEvent:true reason:reason];
+}
+
+- (void)subscriberVideoDisabled:(OTSubscriberKit *)subscriber reason:(OTSubscriberVideoEventReason)reason {
+   
+    [self subscriberVideoEvent:false reason:reason];
+}
+
+/**
+ * Sends even for subscriber video Enabled/Disabled
+ * 
+ * @param isEnabled - True if video enabled, false otherwise
+ * @param reason - reason for video Enabling/Disabling
+ */
+- (void) subscriberVideoEvent:(Boolean) isEnabled reason:(OTSubscriberVideoEventReason)reason {
+    
+    NSMutableDictionary* data = [[NSMutableDictionary alloc] init];
+    
+    NSString *result ;
+    switch(reason) {
+        case OTSubscriberVideoEventPublisherPropertyChanged:
+            result = @"1";
+            break;
+        case OTSubscriberVideoEventSubscriberPropertyChanged:
+            result = @"2";
+            break;
+        case OTSubscriberVideoEventQualityChanged:
+            result = @"2";
+            break;
+    }
+    
+    [data setValue:result forKey:@"OTSubscriberVideoEventReason"];
+
+    NSString *stringEvenKey;
+    
+    stringEvenKey = isEnabled ? @"subscriberVideoEnabled" : @"subscriberVideoDisabled";
+    
+    [data setValue:result forKey:@"OTSubscriberVideoEventReason"];
+    [self triggerJSEvent:stringEvenKey withType:stringEvenKey withData:data];
+}
 
 @end
