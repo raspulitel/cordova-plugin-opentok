@@ -547,21 +547,22 @@ static NSString * SID_S;
 
 - (void)subscriberVideoEnabled:(OTSubscriberKit *)subscriber reason:(OTSubscriberVideoEventReason)reason {
  
-    [self subscriberVideoEvent:true reason:reason];
+    [self subscriberVideoEvent:YES subscriber:subscriber reason:reason];
 }
 
 - (void)subscriberVideoDisabled:(OTSubscriberKit *)subscriber reason:(OTSubscriberVideoEventReason)reason {
    
-    [self subscriberVideoEvent:false reason:reason];
+    [self subscriberVideoEvent:NO subscriber:subscriber reason:reason];
 }
 
 /**
  * Sends even for subscriber video Enabled/Disabled
  * 
+ * @param subscriber - subscriber connected
  * @param isEnabled - True if video enabled, false otherwise
  * @param reason - reason for video Enabling/Disabling
  */
-- (void) subscriberVideoEvent:(Boolean) isEnabled reason:(OTSubscriberVideoEventReason)reason {
+- (void) subscriberVideoEvent:(Boolean) isEnabled subscriber:(OTSubscriberKit *)subscriber reason:(OTSubscriberVideoEventReason)reason {
     
     NSMutableDictionary* data = [[NSMutableDictionary alloc] init];
     
@@ -574,10 +575,11 @@ static NSString * SID_S;
             result = @"2";
             break;
         case OTSubscriberVideoEventQualityChanged:
-            result = @"2";
+            result = @"3";
             break;
     }
     
+    [data setObject:subscriber.stream.streamId forKey:@"streamId"];
     [data setValue:result forKey:@"OTSubscriberVideoEventReason"];
 
     NSString *stringEvenKey;

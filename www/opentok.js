@@ -645,6 +645,8 @@ TBSession = (function() {
     this.sessionId = sessionId;
     this.signalReceived = __bind(this.signalReceived, this);
     this.subscribedToStream = __bind(this.subscribedToStream, this);
+    this.subscriberVideoEnabled = __bind(this.subscriberVideoEnabled, this);
+    this.subscriberVideoDisabled = __bind(this.subscriberVideoDisabled, this);
     this.streamDestroyed = __bind(this.streamDestroyed, this);
     this.streamCreated = __bind(this.streamCreated, this);
     this.sessionDisconnected = __bind(this.sessionDisconnected, this);
@@ -774,6 +776,44 @@ TBSession = (function() {
       callbackFunc();
     }
   };
+
+  TBSession.prototype.subscriberVideoEnabled = function(event) {
+    var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
+    
+    OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    streamId = event.streamId;
+
+    callbackFunc = this.subscriberCallbacks[streamId, OTSubscriberVideoEventReason];
+    if (callbackFunc == null) {
+      return;
+    }
+
+    if (event.errorCode != null) {
+      error = new OTError(event.errorCode);
+      callbackFunc(error);
+    } else {
+      callbackFunc();
+    }
+  }
+
+  TBSession.prototype.subscriberVideoDisabled = function(event) {
+    var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
+    
+    OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    streamId = event.streamId;
+
+    callbackFunc = this.subscriberCallbacks[streamId, OTSubscriberVideoEventReason];
+    if (callbackFunc == null) {
+      return;
+    }
+
+    if (event.errorCode != null) {
+      error = new OTError(event.errorCode);
+      callbackFunc(error);
+    } else {
+      callbackFunc();
+    }
+  }
 
   TBSession.prototype.signalReceived = function(event) {
     var streamEvent;
