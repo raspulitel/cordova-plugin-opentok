@@ -545,6 +545,13 @@ static NSString * SID_S;
     
 }
 
+- (void) subscriberDidDisconnectFromStream:(OTStream*)stream {
+    
+    NSLog(@"%@", stream);
+    
+    // [self subscriberVideoEvent:NO subscriber:nil reason:OTSubscriberVideoEventSubscriberPropertyChanged];
+}
+
 - (void)subscriberVideoEnabled:(OTSubscriberKit *)subscriber reason:(OTSubscriberVideoEventReason)reason {
  
     [self subscriberVideoEvent:YES subscriber:subscriber reason:reason];

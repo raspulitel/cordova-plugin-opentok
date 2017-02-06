@@ -783,7 +783,7 @@ TBSession = (function() {
     OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
     streamId = event.streamId;
 
-    callbackFunc = this.subscriberCallbacks[streamId, OTSubscriberVideoEventReason];
+    callbackFunc = this.subscriberCallbacks[streamId];
     if (callbackFunc == null) {
       return;
     }
@@ -792,7 +792,7 @@ TBSession = (function() {
       error = new OTError(event.errorCode);
       callbackFunc(error);
     } else {
-      callbackFunc();
+      callbackFunc(OTSubscriberVideoEventReason);
     }
   }
 
@@ -802,7 +802,7 @@ TBSession = (function() {
     OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
     streamId = event.streamId;
 
-    callbackFunc = this.subscriberCallbacks[streamId, OTSubscriberVideoEventReason];
+    callbackFunc = this.subscriberCallbacks[streamId];
     if (callbackFunc == null) {
       return;
     }
@@ -811,7 +811,7 @@ TBSession = (function() {
       error = new OTError(event.errorCode);
       callbackFunc(error);
     } else {
-      callbackFunc();
+      callbackFunc(OTSubscriberVideoEventReason);
     }
   }
 
