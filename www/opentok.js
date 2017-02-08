@@ -823,41 +823,51 @@ TBSession = (function() {
   };
 
   TBSession.prototype.subscriberVideoEnabled = function(event) {
-    var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
+
+    var OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    this.trigger("subscriberVideoEnabled", OTSubscriberVideoEventReason);
+    return this;
+
+    // var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
     
-    OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
-    streamId = event.streamId;
+    // OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    // streamId = event.streamId;
 
-    callbackFunc = this.subscriberCallbacks[streamId];
-    if (callbackFunc == null) {
-      return;
-    }
+    // callbackFunc = this.subscriberCallbacks[streamId];
+    // if (callbackFunc == null) {
+    //   return;
+    // }
 
-    if (event.errorCode != null) {
-      error = new OTError(event.errorCode);
-      callbackFunc(error);
-    } else {
-      callbackFunc(OTSubscriberVideoEventReason);
-    }
+    // if (event.errorCode != null) {
+    //   error = new OTError(event.errorCode);
+    //   callbackFunc(error);
+    // } else {
+    //   callbackFunc(OTSubscriberVideoEventReason);
+    // }
   }
 
   TBSession.prototype.subscriberVideoDisabled = function(event) {
-    var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
+
+    var OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    this.trigger("subscriberVideoDisabled", OTSubscriberVideoEventReason);
+    return this;
+
+    // var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
     
-    OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
-    streamId = event.streamId;
+    // OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    // streamId = event.streamId;
 
-    callbackFunc = this.subscriberCallbacks[streamId];
-    if (callbackFunc == null) {
-      return;
-    }
+    // callbackFunc = this.subscriberCallbacks[streamId];
+    // if (callbackFunc == null) {
+    //   return;
+    // }
 
-    if (event.errorCode != null) {
-      error = new OTError(event.errorCode);
-      callbackFunc(error);
-    } else {
-      callbackFunc(OTSubscriberVideoEventReason);
-    }
+    // if (event.errorCode != null) {
+    //   error = new OTError(event.errorCode);
+    //   callbackFunc(error);
+    // } else {
+    //   callbackFunc(OTSubscriberVideoEventReason);
+    // }
   }
 
   TBSession.prototype.signalReceived = function(event) {
