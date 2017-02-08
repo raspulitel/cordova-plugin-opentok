@@ -6,8 +6,14 @@
 //
 
 #import "OpentokPlugin.h"
+#import "OTNetworkTest.h"
 
 static NSString * SID_S;
+
+@interface OpenTokPlugin () <OTNetworkTestDelegate>
+
+@end
+
 
 @implementation OpenTokPlugin{
     OTSession* _session;
@@ -17,6 +23,7 @@ static NSString * SID_S;
     NSMutableDictionary *connectionDictionary;
     NSMutableDictionary *streamDictionary;
     NSMutableDictionary *callbackList;
+    OTNetworkTest *_networkTest;
 }
 
 @synthesize exceptionId;
@@ -596,5 +603,44 @@ static NSString * SID_S;
     [data setValue:result forKey:@"OTSubscriberVideoEventReason"];
     [self triggerJSEvent:@"sessionEvents" withType:stringEvenKey withData:data];
 }
+
+#pragma mark Network Test
+
+-(void)networkTest:(CDVInvokedUrlCommand*)command {
+    
+    // Get Parameters
+    NSString* apiKey = [command.arguments objectAtIndex:0];
+    NSString* sessionId = [command.arguments objectAtIndex:1];
+    NSString* token = [command.arguments objectAtIndex:2];
+
+    
+    _networkTest = [[OTNetworkTest alloc] init];
+    [_networkTest runConnectivityTestWithApiKey:apiKey
+                                      sessionId:sessionId
+                                          token:token
+                             executeQualityTest:YES
+                            qualityTestDuration:10
+                                       delegate:self];
+}
+
+/**
+ * result -
+ * OTNetworkTestResultVideoAndVoice - Good for both Video and Audio
+ * OTNetworkTestResultVoiceOnly     - Audio only sessions possible (when "bps < 150K
+ *                                    and > 50K" or packet loss ratio > 3%)
+ * OTNetworkTestResultNotGood       - No Video and Audio (when platform connectivity
+ *                                    failed or bps < 50K or packet loss ratio > 5%)
+ */
+- (void)networkTestDidCompleteWithResult:(enum OTNetworkTestResult)result
+                                   error:(OTError*)error
+{
+    
+    NSString *resultString = (result == OTNetworkTestResultVideoAndVoice) ? @"0" : (result == OTNetworkTestResultVoiceOnly ? @"1" :@"2");
+    NSMutableDictionary* data = [[NSMutableDictionary alloc] init];
+    [data setValue: resultString forKey: @"result"];
+    
+    [self triggerJSEvent: @"networkTestEvents" withType: @"getStatsValue" withData: data];
+}
+
 
 @end
