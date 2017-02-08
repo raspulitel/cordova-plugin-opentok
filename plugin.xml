@@ -53,7 +53,11 @@
 
       <header-file src="src/ios/OpenTokPlugin.h" />
       <source-file src="src/ios/OpenTokPlugin.m" />
-
+      <header-file src="src/ios/OTNetworkTest.h" />
+      <source-file src="src/ios/OTNetworkTest.m" />
+      <header-file src="src/ios/OTDefaultAudioDevice.h" />
+      <source-file src="src/ios/OTDefaultAudioDevice.m" />
+      
       <framework src="libstdc++.dylib" />
       <framework src="libc++.dylib" />
       <framework src="libxml2.dylib" />

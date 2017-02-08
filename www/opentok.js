@@ -18,6 +18,11 @@ window.OT = {
     }
     return new TBSession(apiKey, sessionId);
   },
+
+  initNetworkTest: function(apiKey, sessionId, token) {
+     return new TBNetworkTest(apiKey, sessionId, token); 
+  },
+
   log: function(message) {
     return pdebug("TB LOG", message);
   },
@@ -469,6 +474,46 @@ TBPublisher = (function() {
 
 })();
 
+var TBNetworkTest;
+
+TBNetworkTest = (function() {
+
+  function TBNetworkTest(apiKey, sessionId,token) {
+    this.networkTestCallback = {};
+    this.apiKey = apiKey;
+    this.sessionId = sessionId;
+    this.token = token;
+    
+    this.getStatsValue = __bind(this.getStatsValue, this);
+    this.eventReceived = __bind(this.eventReceived, this);
+
+    OT.getHelper().eventing(this);
+
+    Cordova.exec(TBSuccess, TBSuccess, OTPlugin, "networkTest", [apiKey, sessionId, token]);
+    Cordova.exec(this.eventReceived, TBError, OTPlugin, "addEvent", ["networkTestEvents"]);
+  }
+
+  TBNetworkTest.prototype.getStatsValue = function(event) {
+    var qualityValue = event.result;
+    this.trigger("statsValueReceieved", qualityValue);
+    return this;
+
+  };
+
+  TBNetworkTest.prototype.eventReceived = function(response) {
+    pdebug("session event received", response);
+    return this[response.eventType](response.data);
+  };
+
+  TBNetworkTest.prototype.addEventListener = function(event, handler) {
+    this.on(event, handler);
+    return this;
+  };
+
+  return TBNetworkTest;
+
+})();
+
 var TBSession,
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -645,6 +690,8 @@ TBSession = (function() {
     this.sessionId = sessionId;
     this.signalReceived = __bind(this.signalReceived, this);
     this.subscribedToStream = __bind(this.subscribedToStream, this);
+    this.subscriberVideoEnabled = __bind(this.subscriberVideoEnabled, this);
+    this.subscriberVideoDisabled = __bind(this.subscriberVideoDisabled, this);
     this.streamDestroyed = __bind(this.streamDestroyed, this);
     this.streamCreated = __bind(this.streamCreated, this);
     this.sessionDisconnected = __bind(this.sessionDisconnected, this);
@@ -774,6 +821,54 @@ TBSession = (function() {
       callbackFunc();
     }
   };
+
+  TBSession.prototype.subscriberVideoEnabled = function(event) {
+
+    var OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    this.trigger("subscriberVideoEnabled", OTSubscriberVideoEventReason);
+    return this;
+
+    // var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
+    
+    // OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    // streamId = event.streamId;
+
+    // callbackFunc = this.subscriberCallbacks[streamId];
+    // if (callbackFunc == null) {
+    //   return;
+    // }
+
+    // if (event.errorCode != null) {
+    //   error = new OTError(event.errorCode);
+    //   callbackFunc(error);
+    // } else {
+    //   callbackFunc(OTSubscriberVideoEventReason);
+    // }
+  }
+
+  TBSession.prototype.subscriberVideoDisabled = function(event) {
+
+    var OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    this.trigger("subscriberVideoDisabled", OTSubscriberVideoEventReason);
+    return this;
+
+    // var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
+    
+    // OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
+    // streamId = event.streamId;
+
+    // callbackFunc = this.subscriberCallbacks[streamId];
+    // if (callbackFunc == null) {
+    //   return;
+    // }
+
+    // if (event.errorCode != null) {
+    //   error = new OTError(event.errorCode);
+    //   callbackFunc(error);
+    // } else {
+    //   callbackFunc(OTSubscriberVideoEventReason);
+    // }
+  }
 
   TBSession.prototype.signalReceived = function(event) {
     var streamEvent;

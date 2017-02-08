@@ -10,7 +10,7 @@
 #import <UIKit/UIKit.h>
 #import <Opentok/Opentok.h>
 
-@interface OpenTokPlugin : CDVPlugin <OTSessionDelegate, OTPublisherDelegate, OTSubscriberKitDelegate>
+@interface OpenTokPlugin : CDVPlugin <OTSessionDelegate, OTPublisherDelegate, OTSubscriberKitDelegate, OTSubscriberDelegate>
 
 @property(nonatomic, copy) NSString* exceptionId;
 
@@ -19,8 +19,8 @@
 
 // TB
 - (void)initPublisher:(CDVInvokedUrlCommand*)command;
--(void)initSession:(CDVInvokedUrlCommand*)command;
--(void)exceptionHandler:(CDVInvokedUrlCommand*)command;
+- (void)initSession:(CDVInvokedUrlCommand*)command;
+- (void)exceptionHandler:(CDVInvokedUrlCommand*)command;
 - (void)updateView:(CDVInvokedUrlCommand*)command;
 
 // Publisher
@@ -30,13 +30,14 @@
 - (void)destroyPublisher:(CDVInvokedUrlCommand*)command;
 
 // Session
--(void)connect:(CDVInvokedUrlCommand*)command;
--(void)disconnect:(CDVInvokedUrlCommand*)command;
+- (void)connect:(CDVInvokedUrlCommand*)command;
+- (void)disconnect:(CDVInvokedUrlCommand*)command;
 - (void)publish:(CDVInvokedUrlCommand*)command;
 - (void)unpublish:(CDVInvokedUrlCommand*)command;
 - (void)subscribe:(CDVInvokedUrlCommand*)command;
 - (void)unsubscribe:(CDVInvokedUrlCommand*)command;
 
+-(void)networkTest:(CDVInvokedUrlCommand*)command;
 
 // HouseKeeping
 
