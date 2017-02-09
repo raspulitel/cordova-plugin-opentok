@@ -144,9 +144,19 @@ OTSubscriberKitNetworkStatsDelegate >
  */
 - (void)doPublish
 {
+    
+//    _publisher =
+//    [[OTPublisher alloc] initWithDelegate:self
+//                                     name:[[UIDevice currentDevice] name]];
+    
+    
+    OTPublisherSettings * settings = [[OTPublisherSettings alloc] init];
+    [settings setName:[[UIDevice currentDevice] name]];
+    [settings setCameraFrameRate:OTCameraCaptureFrameRate15FPS];
+    
     _publisher =
-    [[OTPublisher alloc] initWithDelegate:self
-                                     name:[[UIDevice currentDevice] name]];
+    [[OTPublisher alloc] initWithDelegate:self settings:settings];
+
     _publisher.audioFallbackEnabled = NO;
     OTError *error = nil;
     [_session publish:_publisher error:&error];
