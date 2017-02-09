@@ -99,6 +99,7 @@ static NSString * SID_S;
     // Publish and set View
     OTPublisherSettings *publisherSettings = [[OTPublisherSettings alloc] init];
     [publisherSettings setName:name];
+    [publisherSettings setCameraFrameRate:OTCameraCaptureFrameRate15FPS];
     _publisher = [[OTPublisher alloc] initWithDelegate:self settings:publisherSettings];
     // _publisher = [[OTPublisher alloc] initWithDelegate:self name:name];
     [_publisher setPublishAudio:bpubAudio];
