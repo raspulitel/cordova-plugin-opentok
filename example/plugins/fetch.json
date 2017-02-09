@@ -1,0 +1,10 @@
+{
+    "com.tokbox.cordova.opentok": {
+        "source": {
+            "type": "local",
+            "path": "/Data/git/plugin/cordova-plugin-opentok"
+        },
+        "is_top_level": true,
+        "variables": {}
+    }
+}
