@@ -51,6 +51,14 @@
       <hook type="before_plugin_install" src="scripts/downloadiOSSDK.js" />
       <asset src="www/opentok.js" target="opentok.js" />
 
+      <config-file target="*-Info.plist" parent="NSMicrophoneUsageDescription">
+        <string>This app requires microphone access to function properly.</string>
+      </config-file>
+
+      <config-file target="*-Info.plist" parent="NSCameraUsageDescription">
+        <string>This app requires camera access to function properly.</string>
+      </config-file>
+
       <header-file src="src/ios/OpenTokPlugin.h" />
       <source-file src="src/ios/OpenTokPlugin.m" />
       <header-file src="src/ios/OTNetworkTest.h" />
