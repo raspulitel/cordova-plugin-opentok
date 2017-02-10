@@ -692,6 +692,7 @@ TBSession = (function() {
     this.subscribedToStream = __bind(this.subscribedToStream, this);
     this.subscriberVideoEnabled = __bind(this.subscriberVideoEnabled, this);
     this.subscriberVideoDisabled = __bind(this.subscriberVideoDisabled, this);
+    this.subscriberVideoDataReceivingStopped = __bind(this.subscriberVideoDataReceivingStopped, this);
     this.streamDestroyed = __bind(this.streamDestroyed, this);
     this.streamCreated = __bind(this.streamCreated, this);
     this.sessionDisconnected = __bind(this.sessionDisconnected, this);
@@ -827,23 +828,6 @@ TBSession = (function() {
     var OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
     this.trigger("subscriberVideoEnabled", OTSubscriberVideoEventReason);
     return this;
-
-    // var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
-    
-    // OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
-    // streamId = event.streamId;
-
-    // callbackFunc = this.subscriberCallbacks[streamId];
-    // if (callbackFunc == null) {
-    //   return;
-    // }
-
-    // if (event.errorCode != null) {
-    //   error = new OTError(event.errorCode);
-    //   callbackFunc(error);
-    // } else {
-    //   callbackFunc(OTSubscriberVideoEventReason);
-    // }
   }
 
   TBSession.prototype.subscriberVideoDisabled = function(event) {
@@ -851,23 +835,11 @@ TBSession = (function() {
     var OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
     this.trigger("subscriberVideoDisabled", OTSubscriberVideoEventReason);
     return this;
+  }
 
-    // var callbackFunc, error,streamId, OTSubscriberVideoEventReason;
-    
-    // OTSubscriberVideoEventReason = event.OTSubscriberVideoEventReason;
-    // streamId = event.streamId;
-
-    // callbackFunc = this.subscriberCallbacks[streamId];
-    // if (callbackFunc == null) {
-    //   return;
-    // }
-
-    // if (event.errorCode != null) {
-    //   error = new OTError(event.errorCode);
-    //   callbackFunc(error);
-    // } else {
-    //   callbackFunc(OTSubscriberVideoEventReason);
-    // }
+  TBSession.prototype.subscriberVideoDataReceivingStopped = function(event) {
+    this.trigger("subscriberVideoDataReceivingStopped");
+    return this;
   }
 
   TBSession.prototype.signalReceived = function(event) {

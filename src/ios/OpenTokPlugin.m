@@ -24,6 +24,8 @@ static NSString * SID_S;
     NSMutableDictionary *streamDictionary;
     NSMutableDictionary *callbackList;
     OTNetworkTest *_networkTest;
+    
+    NSTimer *timer;
 }
 
 @synthesize exceptionId;
@@ -561,10 +563,30 @@ static NSString * SID_S;
 
  ******/
 
+- (IBAction)subscriberVideoDataReceivingStopped:(id)sender {
+    
+    NSLog(@"OpentTok Event : subscriberVideoDataReceivingStopped");
+
+    [timer invalidate];
+    timer = nil;
+    
+    NSMutableDictionary* data = [[NSMutableDictionary alloc] init];
+    [self triggerJSEvent:@"sessionEvents" withType:@"subscriberVideoDataReceivingStopped" withData:data];
+}
+
 #pragma mark - OTSubscriberDelegate Listeners
 
 - (void)subscriberVideoDataReceived:(OTSubscriber *)subscriber {
-    // NSLog(@"OpentTok Event : subscriberVideoDataReceived");
+    
+    [timer invalidate];
+    
+    timer = [NSTimer scheduledTimerWithTimeInterval: 10
+                                             target: self
+                                           selector: @selector(subscriberVideoDataReceivingStopped:)
+                                           userInfo: nil
+                                            repeats: NO];
+    
+    NSLog(@"OpentTok Event : subscriberVideoDataReceived");
 }
 
 - (void) subscriberDidDisconnectFromStream:(OTStream*)stream {
@@ -575,7 +597,6 @@ static NSString * SID_S;
 - (void)subscriberVideoEnabled:(OTSubscriberKit *)subscriber reason:(OTSubscriberVideoEventReason)reason {
  
     NSLog(@"OpentTok Event : subscriberVideoEnabled %d", reason);
-
     [self subscriberVideoEvent:YES subscriber:subscriber reason:reason];
 }
 

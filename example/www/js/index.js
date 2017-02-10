@@ -53,27 +53,43 @@ var app = {
 
 
     // Very simple OpenTok Code for group video chat
-    var publisher = TB.initPublisher(apiKey,'myPublisherDiv');
-    var session = TB.initSession( apiKey, sessionId ); 
+    var publisher = TB.initPublisher(apiKey, 'myPublisherDiv');
+    var session = TB.initSession(apiKey, sessionId);
 
     session.on({
-      'streamCreated': function( event ){
-          var div = document.createElement('div');
-          div.setAttribute('id', 'stream' + event.stream.streamId);
-          div.style.width = 100 + "%";
-          div.style.height = 50 + "%";
-          document.body.appendChild(div);
-          session.subscribe( event.stream, div.id, {subscribeToAudio: false} );
+      'streamCreated': function (event) {
+        var div = document.createElement('div');
+        div.setAttribute('id', 'stream' + event.stream.streamId);
+        div.style.width = 100 + "%";
+        div.style.height = 50 + "%";
+        document.body.appendChild(div);
+        session.subscribe(event.stream, div.id, {
+          subscribeToAudio: false
+        });
       }
     });
-    session.connect(token, function(){
-      session.publish( publisher );
+    session.connect(token, function () {
+      session.publish(publisher);
     });
 
-    session.on({'subscriberVideoEnabled': function(event) {
-          console.log(event);
-        }
-    })
+    session.on({
+      'subscriberVideoEnabled': function (event) {
+        console.log(event);
+      }
+    });
+
+    session.on({
+      'subscriberVideoDisabled': function (event) {
+        console.log(event);
+      }
+    });
+
+    session.on({
+      'subscriberVideoDataReceivingStopped': function () {
+        console.log('subscriberVideoDataReceivingStopped');
+      }
+    });
+
   },
   // Update DOM on a Received Event
   receivedEvent: function (id) {}
