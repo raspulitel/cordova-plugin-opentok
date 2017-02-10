@@ -292,7 +292,7 @@ static NSString * SID_S;
 /*** Subscriber Methods
  ****/
 - (void)subscriberDidConnectToStream:(OTSubscriberKit*)sub{
-    NSLog(@"iOS Connected To Stream");
+    NSLog(@"OpentTok Event : subscriber subscriberDidConnectToStream: iOS Connected To Stream");
     NSMutableDictionary* eventData = [[NSMutableDictionary alloc] init];
     NSString* streamId = sub.stream.streamId;
     [eventData setObject:streamId forKey:@"streamId"];
@@ -300,7 +300,7 @@ static NSString * SID_S;
 
 }
 - (void)subscriber:(OTSubscriber*)subscrib didFailWithError:(OTError*)error{
-    NSLog(@"subscriber didFailWithError %@", error);
+    NSLog(@"OpentTok Event : subscriber didFailWithError %@", error);
     NSMutableDictionary* eventData = [[NSMutableDictionary alloc] init];
     NSString* streamId = subscrib.stream.streamId;
     NSNumber* errorCode = [NSNumber numberWithInt:1600];
@@ -312,7 +312,7 @@ static NSString * SID_S;
 
 #pragma mark Session Delegates
 - (void)sessionDidConnect:(OTSession*)session{
-    NSLog(@"iOS Connected to Session");
+    NSLog(@"OpentTok Event : sessionDidConnect: iOS Connected to Session");
 
     NSMutableDictionary* sessionDict = [[NSMutableDictionary alloc] init];
 
@@ -356,6 +356,8 @@ static NSString * SID_S;
 
 - (void)session:(OTSession *)session connectionCreated:(OTConnection *)connection
 {
+    NSLog(@"OpentTok Event : session connectionCreated:");
+
     [connectionDictionary setObject: connection forKey: connection.connectionId];
     NSMutableDictionary* data = [[NSMutableDictionary alloc] init];
     NSMutableDictionary* connectionData = [self createDataFromConnection: connection];
@@ -365,6 +367,8 @@ static NSString * SID_S;
 
 - (void)session:(OTSession *)session connectionDestroyed:(OTConnection *)connection
 {
+    NSLog(@"OpentTok Event : session connectionDestroyed:");
+    
     [connectionDictionary removeObjectForKey: connection.connectionId];
     NSMutableDictionary* data = [[NSMutableDictionary alloc] init];
     NSMutableDictionary* connectionData = [self createDataFromConnection: connection];
@@ -372,12 +376,12 @@ static NSString * SID_S;
     [self triggerJSEvent: @"sessionEvents" withType: @"connectionDestroyed" withData: data];
 }
 - (void)session:(OTSession*)mySession streamCreated:(OTStream*)stream{
-    NSLog(@"iOS Received Stream");
+    NSLog(@"OpentTok Event : session streamCreated:");
     [streamDictionary setObject:stream forKey:stream.streamId];
     [self triggerStreamCreated: stream withEventType: @"sessionEvents"];
 }
 - (void)session:(OTSession*)session streamDestroyed:(OTStream *)stream{
-    NSLog(@"iOS Drop Stream");
+    NSLog(@"OpentTok Event : session streamDestroyed:");
 
     OTSubscriber * subscriber = [subscriberDictionary objectForKey:stream.streamId];
     if (subscriber) {
@@ -389,8 +393,9 @@ static NSString * SID_S;
     [self triggerStreamDestroyed: stream withEventType: @"sessionEvents"];
 }
 - (void)session:(OTSession*)session didFailWithError:(OTError*)error {
-    NSLog(@"Error: Session did not Connect");
-    NSLog(@"Error: %@", error);
+    
+    NSLog(@"OpentTok Event : session didFailWithError: Error: %@", error);
+    
     NSNumber* code = [NSNumber numberWithInt:[error code]];
     NSMutableDictionary* err = [[NSMutableDictionary alloc] init];
     [err setObject:error.localizedDescription forKey:@"message"];
@@ -404,7 +409,9 @@ static NSString * SID_S;
 }
 - (void)sessionDidDisconnect:(OTSession*)session{
     NSString* alertMessage = [NSString stringWithFormat:@"Session disconnected: (%@)", session.sessionId];
-    NSLog(@"sessionDidDisconnect (%@)", alertMessage);
+    
+    NSLog(@"OpentTok Event : session sessionDidDisconnect: message: %@", alertMessage);
+
 
     // Setting up event object
     for ( id key in subscriberDictionary ) {
@@ -423,7 +430,8 @@ static NSString * SID_S;
 }
 -(void) session:(OTSession *)session receivedSignalType:(NSString *)type fromConnection:(OTConnection *)connection withString:(NSString *)string{
 
-    NSLog(@"iOS Session Received signal from Connection: %@ with id %@", connection, [connection connectionId]);
+    NSLog(@"OpentTok Event : session iOS Session Received signal from Connection: %@ with id %@", connection, [connection connectionId]);
+    
     NSMutableDictionary* data = [[NSMutableDictionary alloc] init];
     [data setObject: type forKey: @"type"];
     [data setObject: string forKey: @"data"];
@@ -436,14 +444,20 @@ static NSString * SID_S;
 
 #pragma mark Publisher Delegates
 - (void)publisher:(OTPublisherKit *)publisher streamCreated:(OTStream *)stream{
+    NSLog(@"OpentTok Event : publisher streamCreated:");
+    
     [streamDictionary setObject:stream forKey:stream.streamId];
     [self triggerStreamCreated: stream withEventType: @"publisherEvents"];
 }
 - (void)publisher:(OTPublisherKit*)publisher streamDestroyed:(OTStream *)stream{
+    
+    NSLog(@"OpentTok Event : publisher streamDestroyed:");
+    
     [self triggerStreamDestroyed: stream withEventType: @"publisherEvents"];
 }
 - (void)publisher:(OTPublisher*)publisher didFailWithError:(NSError*) error {
-    NSLog(@"iOS Publisher didFailWithError");
+    NSLog(@"OpentTok Event : publisher didFailWithError:%@", error );
+    
     NSMutableDictionary* err = [[NSMutableDictionary alloc] init];
     [err setObject:error.localizedDescription forKey:@"message"];
 
@@ -550,23 +564,24 @@ static NSString * SID_S;
 #pragma mark - OTSubscriberDelegate Listeners
 
 - (void)subscriberVideoDataReceived:(OTSubscriber *)subscriber {
-    
+    // NSLog(@"OpentTok Event : subscriberVideoDataReceived");
 }
 
 - (void) subscriberDidDisconnectFromStream:(OTStream*)stream {
     
-    NSLog(@"%@", stream);
-    
-    // [self subscriberVideoEvent:NO subscriber:nil reason:OTSubscriberVideoEventSubscriberPropertyChanged];
+    NSLog(@"OpentTok Event : subscriberDidDisconnectFromStream");
 }
 
 - (void)subscriberVideoEnabled:(OTSubscriberKit *)subscriber reason:(OTSubscriberVideoEventReason)reason {
  
+    NSLog(@"OpentTok Event : subscriberVideoEnabled %d", reason);
+
     [self subscriberVideoEvent:YES subscriber:subscriber reason:reason];
 }
 
 - (void)subscriberVideoDisabled:(OTSubscriberKit *)subscriber reason:(OTSubscriberVideoEventReason)reason {
    
+    NSLog(@"OpentTok Event : subscriberVideoDisabled %d", reason);
     [self subscriberVideoEvent:NO subscriber:subscriber reason:reason];
 }
 

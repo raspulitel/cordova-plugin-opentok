@@ -19,60 +19,62 @@
 
 var app = {
   // Application Constructor
-  initialize: function() {
+  initialize: function () {
     this.bindEvents();
   },
   // Bind Event Listeners
   //
   // Bind any events that are required on startup. Common events are:
   // 'load', 'deviceready', 'offline', and 'online'.
-  bindEvents: function() {
+  bindEvents: function () {
     document.addEventListener('deviceready', this.onDeviceReady, false);
   },
   // deviceready Event Handler
   //
   // The scope of 'this' is the event. In order to call the 'receivedEvent'
   // function, we must explicity call 'app.receivedEvent(...);'
-  onDeviceReady: function() {
+  onDeviceReady: function () {
 
-      // Sign up for an OpenTok API Key at: https://tokbox.com/signup
-      // Then generate a sessionId and token at: https://dashboard.tokbox.com
-      var apiKey = "45761532"; // INSERT YOUR API Key
-      var sessionId = "1_MX40NTc2MTUzMn5-MTQ4NjQ3MzI1MTk1Nn5nTzF0b3dlN1ZRY3hsMExlMndZMEJLUGl-fg"; // INSERT YOUR SESSION ID
-      var token = "T1==cGFydG5lcl9pZD00NTc2MTUzMiZzaWc9OWNmMmVhYjhhOTM3N2UwYjYzYzExNWFmYjNiYTkwMjdkYTYwODVkODpzZXNzaW9uX2lkPTFfTVg0ME5UYzJNVFV6TW41LU1UUTROalEzTXpJMU1UazFObjVuVHpGMGIzZGxOMVpSWTNoc01FeGxNbmRaTUVKTFVHbC1mZyZjcmVhdGVfdGltZT0xNDg2NDczMjc5Jm5vbmNlPTAuOTgwNjAyNzAwMTczODAyNyZyb2xlPXB1Ymxpc2hlciZleHBpcmVfdGltZT0xNDg3MDc4MDc4"; // INSERT YOUR TOKEN
-      
+    // Sign up for an OpenTok API Key at: https://tokbox.com/signup
+    // Then generate a sessionId and token at: https://dashboard.tokbox.com
+    var apiKey = "45761532"; // INSERT YOUR API Key
+    var sessionId = "1_MX40NTc2MTUzMn5-MTQ4NjQ3MzI1MTk1Nn5nTzF0b3dlN1ZRY3hsMExlMndZMEJLUGl-fg"; // INSERT YOUR SESSION ID
+    var token = "T1==cGFydG5lcl9pZD00NTc2MTUzMiZzaWc9OWNmMmVhYjhhOTM3N2UwYjYzYzExNWFmYjNiYTkwMjdkYTYwODVkODpzZXNzaW9uX2lkPTFfTVg0ME5UYzJNVFV6TW41LU1UUTROalEzTXpJMU1UazFObjVuVHpGMGIzZGxOMVpSWTNoc01FeGxNbmRaTUVKTFVHbC1mZyZjcmVhdGVfdGltZT0xNDg2NDczMjc5Jm5vbmNlPTAuOTgwNjAyNzAwMTczODAyNyZyb2xlPXB1Ymxpc2hlciZleHBpcmVfdGltZT0xNDg3MDc4MDc4"; // INSERT YOUR TOKEN
 
-      var networkTest = TB.initNetworkTest(apiKey,sessionId,token);
+    // document.getElementById("buttonPerformNetworkTest").addEventListener("click", function () {
+    //   var networkTest = TB.initNetworkTest(apiKey, sessionId, token);
+    //   networkTest.on({
+    //     "statsValueReceieved": function (qualityValue) {
+    //       console.log(qualityValue);
+    //       alert(qualityValue);
+    //     }
+    //   })
+    // });
 
-      networkTest.on({ "statsValueReceieved": function(qualityValue) {
-          console.log(qualityValue);
+
+    // Very simple OpenTok Code for group video chat
+    var publisher = TB.initPublisher(apiKey,'myPublisherDiv');
+    var session = TB.initSession( apiKey, sessionId ); 
+
+    session.on({
+      'streamCreated': function( event ){
+          var div = document.createElement('div');
+          div.setAttribute('id', 'stream' + event.stream.streamId);
+          div.style.width = 100 + "%";
+          div.style.height = 50 + "%";
+          document.body.appendChild(div);
+          session.subscribe( event.stream, div.id, {subscribeToAudio: false} );
+      }
+    });
+    session.connect(token, function(){
+      session.publish( publisher );
+    });
+
+    session.on({'subscriberVideoEnabled': function(event) {
+          console.log(event);
         }
-      })
-
-      // // Very simple OpenTok Code for group video chat
-      // var publisher = TB.initPublisher(apiKey,'myPublisherDiv');
-
-      // var session = TB.initSession( apiKey, sessionId ); 
-
-
-      // session.on({
-      //   'streamCreated': function( event ){
-      //       var div = document.createElement('div');
-      //       div.setAttribute('id', 'stream' + event.stream.streamId);
-      //       document.body.appendChild(div);
-      //       session.subscribe( event.stream, div.id, {subscribeToAudio: false} );
-      //   }
-      // });
-      // session.connect(token, function(){
-      //   session.publish( publisher );
-      // });
-
-      // session.on({'subscriberVideoEnabled': function(event) {
-      //       console.log(event);
-      //     }
-      // })
+    })
   },
   // Update DOM on a Received Event
-  receivedEvent: function(id) {
-  }
+  receivedEvent: function (id) {}
 };
