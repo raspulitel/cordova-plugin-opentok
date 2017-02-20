@@ -19,8 +19,8 @@ window.OT = {
     return new TBSession(apiKey, sessionId);
   },
 
-  initNetworkTest: function(apiKey, sessionId, token) {
-     return new TBNetworkTest(apiKey, sessionId, token); 
+  initNetworkTest: function(apiKey, sessionId, token, timeoutValue) {
+     return new TBNetworkTest(apiKey, sessionId, token, timeoutValue); 
   },
 
   log: function(message) {
@@ -478,18 +478,19 @@ var TBNetworkTest;
 
 TBNetworkTest = (function() {
 
-  function TBNetworkTest(apiKey, sessionId,token) {
+  function TBNetworkTest(apiKey, sessionId,token, timeoutValue) {
     this.networkTestCallback = {};
     this.apiKey = apiKey;
     this.sessionId = sessionId;
     this.token = token;
+    this.timeoutValue = timeoutValue;
     
     this.getStatsValue = __bind(this.getStatsValue, this);
     this.eventReceived = __bind(this.eventReceived, this);
 
     OT.getHelper().eventing(this);
 
-    Cordova.exec(TBSuccess, TBSuccess, OTPlugin, "networkTest", [apiKey, sessionId, token]);
+    Cordova.exec(TBSuccess, TBSuccess, OTPlugin, "networkTest", [apiKey, sessionId, token, timeoutValue]);
     Cordova.exec(this.eventReceived, TBError, OTPlugin, "addEvent", ["networkTestEvents"]);
   }
 

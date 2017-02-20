@@ -38,57 +38,57 @@ var app = {
     // Sign up for an OpenTok API Key at: https://tokbox.com/signup
     // Then generate a sessionId and token at: https://dashboard.tokbox.com
     var apiKey = "45761532"; // INSERT YOUR API Key
-    var sessionId = "1_MX40NTc2MTUzMn5-MTQ4NjQ3MzI1MTk1Nn5nTzF0b3dlN1ZRY3hsMExlMndZMEJLUGl-fg"; // INSERT YOUR SESSION ID
-    var token = "T1==cGFydG5lcl9pZD00NTc2MTUzMiZzaWc9OWNmMmVhYjhhOTM3N2UwYjYzYzExNWFmYjNiYTkwMjdkYTYwODVkODpzZXNzaW9uX2lkPTFfTVg0ME5UYzJNVFV6TW41LU1UUTROalEzTXpJMU1UazFObjVuVHpGMGIzZGxOMVpSWTNoc01FeGxNbmRaTUVKTFVHbC1mZyZjcmVhdGVfdGltZT0xNDg2NDczMjc5Jm5vbmNlPTAuOTgwNjAyNzAwMTczODAyNyZyb2xlPXB1Ymxpc2hlciZleHBpcmVfdGltZT0xNDg3MDc4MDc4"; // INSERT YOUR TOKEN
+    var sessionId = "1_MX40NTc2MTUzMn5-MTQ4NzU5MjMwNDEyMX50ZHFwSDNNaE1Pd2ROdXpsclZSbjFaMGV-fg"; // INSERT YOUR SESSION ID
+    var token = "T1==cGFydG5lcl9pZD00NTc2MTUzMiZzaWc9ZWVlYjE1OGQ1NzJjNjYwMDc5NDEwZjYzYmM0Zjc5MGUzMzlmZTg0MTpzZXNzaW9uX2lkPTFfTVg0ME5UYzJNVFV6TW41LU1UUTROelU1TWpNd05ERXlNWDUwWkhGd1NETk5hRTFQZDJST2RYcHNjbFpTYmpGYU1HVi1mZyZjcmVhdGVfdGltZT0xNDg3NTkyMzIxJm5vbmNlPTAuOTY1MTIzNjEwMjk2ODE2OCZyb2xlPXB1Ymxpc2hlciZleHBpcmVfdGltZT0xNDg4MTk3MTE5"; // INSERT YOUR TOKEN
 
-    // document.getElementById("buttonPerformNetworkTest").addEventListener("click", function () {
-    //   var networkTest = TB.initNetworkTest(apiKey, sessionId, token);
-    //   networkTest.on({
-    //     "statsValueReceieved": function (qualityValue) {
-    //       console.log(qualityValue);
-    //       alert(qualityValue);
-    //     }
-    //   })
+    document.getElementById("buttonPerformNetworkTest").addEventListener("click", function () {
+      var networkTest = TB.initNetworkTest(apiKey, sessionId, token, 35);
+      networkTest.on({
+        "statsValueReceieved": function (qualityValue) {
+          console.log(qualityValue);
+          alert(qualityValue);
+        }
+      });
+    });
+
+
+    // // Very simple OpenTok Code for group video chat
+    // var publisher = TB.initPublisher(apiKey, 'myPublisherDiv');
+    // var session = TB.initSession(apiKey, sessionId);
+
+    // session.on({
+    //   'streamCreated': function (event) {
+    //     var div = document.createElement('div');
+    //     div.setAttribute('id', 'stream' + event.stream.streamId);
+    //     div.style.width = 100 + "%";
+    //     div.style.height = 50 + "%";
+    //     document.body.appendChild(div);
+    //     session.subscribe(event.stream, div.id, {
+    //       subscribeToAudio: false
+    //     });
+    //   }
+    // });
+    // session.connect(token, function () {
+    //   session.publish(publisher);
     // });
 
+    // session.on({
+    //   'subscriberVideoEnabled': function (event) {
+    //     console.log(event);
+    //   }
+    // });
 
-    // Very simple OpenTok Code for group video chat
-    var publisher = TB.initPublisher(apiKey, 'myPublisherDiv');
-    var session = TB.initSession(apiKey, sessionId);
+    // session.on({
+    //   'subscriberVideoDisabled': function (event) {
+    //     console.log(event);
+    //   }
+    // });
 
-    session.on({
-      'streamCreated': function (event) {
-        var div = document.createElement('div');
-        div.setAttribute('id', 'stream' + event.stream.streamId);
-        div.style.width = 100 + "%";
-        div.style.height = 50 + "%";
-        document.body.appendChild(div);
-        session.subscribe(event.stream, div.id, {
-          subscribeToAudio: false
-        });
-      }
-    });
-    session.connect(token, function () {
-      session.publish(publisher);
-    });
-
-    session.on({
-      'subscriberVideoEnabled': function (event) {
-        console.log(event);
-      }
-    });
-
-    session.on({
-      'subscriberVideoDisabled': function (event) {
-        console.log(event);
-      }
-    });
-
-    session.on({
-      'subscriberVideoDataReceivingStopped': function () {
-        console.log('subscriberVideoDataReceivingStopped');
-      }
-    });
+    // session.on({
+    //   'subscriberVideoDataReceivingStopped': function () {
+    //     console.log('subscriberVideoDataReceivingStopped');
+    //   }
+    // });
 
   },
   // Update DOM on a Received Event

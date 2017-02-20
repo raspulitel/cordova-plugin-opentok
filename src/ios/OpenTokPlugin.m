@@ -649,7 +649,17 @@ static NSString * SID_S;
     NSString* apiKey = [command.arguments objectAtIndex:0];
     NSString* sessionId = [command.arguments objectAtIndex:1];
     NSString* token = [command.arguments objectAtIndex:2];
+    NSString* timeout = [command.arguments objectAtIndex:3];
 
+    if([timeout isEqual:[NSNull null]]) {
+        timeout = @"30";
+    }
+
+    timer = [NSTimer scheduledTimerWithTimeInterval: [timeout doubleValue]
+                                             target: self
+                                           selector: @selector(networkTestTimedOut:)
+                                           userInfo: nil
+                                            repeats: NO];
     
     _networkTest = [[OTNetworkTest alloc] init];
     [_networkTest runConnectivityTestWithApiKey:apiKey
@@ -658,6 +668,19 @@ static NSString * SID_S;
                              executeQualityTest:YES
                             qualityTestDuration:10
                                        delegate:self];
+}
+
+- (IBAction)networkTestTimedOut:(id)sender {
+    
+    NSLog(@"OpentTok Event : networkTestTimedOut");
+    
+    [timer invalidate];
+    timer = nil;
+    
+    NSMutableDictionary* data = [[NSMutableDictionary alloc] init];
+    [data setValue: @"1" forKey: @"error"];
+    
+    [self triggerJSEvent: @"networkTestEvents" withType: @"getStatsValue" withData: data];
 }
 
 /**
@@ -671,11 +694,20 @@ static NSString * SID_S;
 - (void)networkTestDidCompleteWithResult:(enum OTNetworkTestResult)result
                                    error:(OTError*)error
 {
+    [timer invalidate];
+    timer = nil;
     
     NSString *resultString = (result == OTNetworkTestResultVideoAndVoice) ? @"0" : (result == OTNetworkTestResultVoiceOnly ? @"1" :@"2");
     NSMutableDictionary* data = [[NSMutableDictionary alloc] init];
     [data setValue: resultString forKey: @"result"];
     
+    if(error == nil) {
+        [data setValue: @"0" forKey: @"error"];
+    }
+    else {
+        [data setValue: @"1" forKey: @"error"];
+    }
+
     [self triggerJSEvent: @"networkTestEvents" withType: @"getStatsValue" withData: data];
 }
 
