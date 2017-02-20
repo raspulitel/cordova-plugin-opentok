@@ -100,6 +100,13 @@ OTSubscriberKitNetworkStatsDelegate >
         {
             [_myAudioDevice setAudioPlayoutMute:NO];
             [OTAudioDeviceManager setAudioDevice:nil];
+                        
+            // Clear Session for the next call
+            OTError *error = nil;
+            [_session unsubscribe:_subscriber error:&error];
+            [_session unpublish:_publisher error:&error];
+            [_session disconnect:&error];
+
             [self cleanupSession];
             [self.networkTestDelegate networkTestDidCompleteWithResult:result
                                                                  error:error];
