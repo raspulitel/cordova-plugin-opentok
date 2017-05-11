@@ -278,6 +278,11 @@ audioNetworkStatsUpdated:(OTSubscriberKitAudioNetworkStats*)stats
     enum OTNetworkTestResult result = OTNetworkTestResultVideoAndVoice;
     NSDictionary* userInfo = nil;
     
+    /* Implementation Logic :
+     * Use the average of the variables such as video_bw to determine the quality instead of useing the last value received.
+     * Final Value = Sum of all values recieved in all passes / total passes
+     */
+    
     NSLog(@"Bidchat Video Report BW=%ld Pass=%d Ratio=%f Pass=%d",video_bw, video_bw_count, video_pl_ratio, video_pl_ratio_count);
     NSLog(@"Bidchat Audio Report BW=%ld Pass=%d Ratio=%f Pass=%d",audio_bw, audio_bw_count, audio_pl_ratio, audio_pl_ratio_count);
     
