@@ -40,15 +40,21 @@ OTSubscriberKitNetworkStatsDelegate >
     long audio_bw;
     double video_pl_ratio;
     double audio_pl_ratio;
+    
+    int video_bw_count;
+    int audio_bw_count;
+    int video_pl_ratio_count;
+    int audio_pl_ratio_count;
+    
     OTDefaultAudioDevice* _myAudioDevice;
 }
 
 - (void)runConnectivityTestWithApiKey:(NSString*)apiKey
-                           sessionId:(NSString*)sesssionId
-                               token:(NSString*)token
-                  executeQualityTest:(BOOL)needsQualityTest
-                 qualityTestDuration:(int)qualityTestDuration
-                            delegate:(id<OTNetworkTestDelegate>)delegate
+                            sessionId:(NSString*)sesssionId
+                                token:(NSString*)token
+                   executeQualityTest:(BOOL)needsQualityTest
+                  qualityTestDuration:(int)qualityTestDuration
+                             delegate:(id<OTNetworkTestDelegate>)delegate
 {
     prevVideoTimestamp = 0;
     prevVideoBytes = 0;
@@ -62,15 +68,20 @@ OTSubscriberKitNetworkStatsDelegate >
     audio_bw = 0;
     video_pl_ratio = -1;
     audio_pl_ratio = -1;
-
+    
+    video_bw_count = 0;
+    audio_bw_count = 0;
+    video_pl_ratio_count = 0;
+    audio_pl_ratio_count = 0;
+    
     if(!_myAudioDevice)
     {
         _myAudioDevice = [[OTDefaultAudioDevice alloc] init];
     }
-
+    
     [OTAudioDeviceManager setAudioDevice:_myAudioDevice];
     [_myAudioDevice setAudioPlayoutMute:YES];
-
+    
     _token = [token copy];
     _runQualityStatsTest = needsQualityTest;
     _qualityTestDuration = qualityTestDuration;
@@ -83,7 +94,7 @@ OTSubscriberKitNetworkStatsDelegate >
 }
 
 -(void)dispatchResultsToDelegateWithResult:(enum OTNetworkTestResult)result
-                                            error:(OTError*)error
+                                     error:(OTError*)error
 {
     if(_session.sessionConnectionStatus == OTSessionConnectionStatusConnected)
     {
@@ -98,15 +109,15 @@ OTSubscriberKitNetworkStatsDelegate >
              respondsToSelector:@selector(networkTestDidCompleteWithResult:
                                           error:)])
         {
-            [_myAudioDevice setAudioPlayoutMute:NO];                        
-//          [OTAudioDeviceManager setAudioDevice:nil];
+            [_myAudioDevice setAudioPlayoutMute:NO];
+            //          [OTAudioDeviceManager setAudioDevice:nil];
             
             // Clear Session for the next call
             OTError *error = nil;
             [_session unsubscribe:_subscriber error:&error];
             [_session unpublish:_publisher error:&error];
-//          [_session disconnect:&error];
-
+            //          [_session disconnect:&error];
+            
             [self cleanupSession];
             [self.networkTestDelegate networkTestDidCompleteWithResult:result
                                                                  error:error];
@@ -152,9 +163,9 @@ OTSubscriberKitNetworkStatsDelegate >
 - (void)doPublish
 {
     
-//    _publisher =
-//    [[OTPublisher alloc] initWithDelegate:self
-//                                     name:[[UIDevice currentDevice] name]];
+    //    _publisher =
+    //    [[OTPublisher alloc] initWithDelegate:self
+    //                                     name:[[UIDevice currentDevice] name]];
     
     
     OTPublisherSettings * settings = [[OTPublisherSettings alloc] init];
@@ -163,7 +174,7 @@ OTSubscriberKitNetworkStatsDelegate >
     
     _publisher =
     [[OTPublisher alloc] initWithDelegate:self settings:settings];
-
+    
     _publisher.audioFallbackEnabled = NO;
     OTError *error = nil;
     [_session publish:_publisher error:&error];
@@ -225,8 +236,13 @@ videoNetworkStatsUpdated:(OTSubscriberKitVideoNetworkStats*)stats
     
     if (stats.timestamp - prevVideoTimestamp >= TIME_WINDOW)
     {
-        video_bw = (8 * (stats.videoBytesReceived - prevVideoBytes)) / ((stats.timestamp - prevVideoTimestamp) / 1000ull);
-
+        long video_bw_now = (8 * (stats.videoBytesReceived - prevVideoBytes)) / ((stats.timestamp - prevVideoTimestamp) / 1000ull);
+        video_bw += video_bw_now;
+        video_bw_count++;
+        
+        NSLog(@"Bidchat Video Bandwidth=%ld Pass=%d Total=%ld",video_bw_now, video_bw_count, video_bw);
+        
+        
         [self processStats:stats];
         prevVideoTimestamp = stats.timestamp;
         prevVideoBytes = stats.videoBytesReceived;
@@ -245,8 +261,12 @@ audioNetworkStatsUpdated:(OTSubscriberKitAudioNetworkStats*)stats
     
     if (stats.timestamp - prevAudioTimestamp >= TIME_WINDOW)
     {
-        audio_bw = (8 * (stats.audioBytesReceived - prevAudioBytes)) / ((stats.timestamp - prevAudioTimestamp) / 1000ull);
-
+        long audio_bw_now =  (8 * (stats.audioBytesReceived - prevAudioBytes)) / ((stats.timestamp - prevAudioTimestamp) / 1000ull);
+        audio_bw += audio_bw_now;
+        audio_bw_count++;
+        
+        NSLog(@"Bidchat Audio Bandwidth=%ld Pass=%d Total=%ld",audio_bw_now, audio_bw_count, audio_bw);
+        
         [self processStats:stats];
         prevAudioTimestamp = stats.timestamp;
         prevAudioBytes = stats.audioBytesReceived;
@@ -258,8 +278,16 @@ audioNetworkStatsUpdated:(OTSubscriberKitAudioNetworkStats*)stats
     enum OTNetworkTestResult result = OTNetworkTestResultVideoAndVoice;
     NSDictionary* userInfo = nil;
     
-    BOOL canDoVideo = (video_bw >= 150000 && video_pl_ratio <= 0.03);
-    BOOL canDoAudio = (audio_bw >= 25000 && audio_pl_ratio <= 0.05);
+    /* Implementation Logic :
+     * Use the average of the variables such as video_bw to determine the quality instead of useing the last value received.
+     * Final Value = Sum of all values recieved in all passes / total passes
+     */
+    
+    NSLog(@"Bidchat Video Report BW=%ld Pass=%d Ratio=%f Pass=%d",video_bw, video_bw_count, video_pl_ratio, video_pl_ratio_count);
+    NSLog(@"Bidchat Audio Report BW=%ld Pass=%d Ratio=%f Pass=%d",audio_bw, audio_bw_count, audio_pl_ratio, audio_pl_ratio_count);
+    
+    BOOL canDoVideo = ((video_bw/video_bw_count) >= 150000 && (video_pl_ratio/video_pl_ratio_count) <= 0.03);
+    BOOL canDoAudio = ((audio_bw/audio_bw_count) >= 25000 && (audio_pl_ratio/audio_pl_ratio_count) <= 0.05);
     
     if (!canDoVideo && !canDoAudio)
     {
@@ -324,30 +352,44 @@ audioNetworkStatsUpdated:(OTSubscriberKitAudioNetworkStats*)stats
 {
     if ([stats isKindOfClass:[OTSubscriberKitVideoNetworkStats class]])
     {
-        video_pl_ratio = -1;
+        //        video_pl_ratio = -1;
         OTSubscriberKitVideoNetworkStats *videoStats =
         (OTSubscriberKitVideoNetworkStats *) stats;
         if (prevVideoPacketsRcvd != 0) {
             uint64_t pl = videoStats.videoPacketsLost - prevVideoPacketsLost;
             uint64_t pr = videoStats.videoPacketsReceived - prevVideoPacketsRcvd;
             uint64_t pt = pl + pr;
-            if (pt > 0)
-                video_pl_ratio = (double) pl / (double) pt;
+            if (pt > 0) {
+                
+                double video_pl_ratio_now = (double) pl / (double) pt;
+                video_pl_ratio += video_pl_ratio_now;
+                video_pl_ratio_count++;
+                
+                NSLog(@"Bidchat Video Packet Loss =%f Pass=%d Total=%f",video_pl_ratio_now, video_pl_ratio_count, video_pl_ratio);
+                
+            }
         }
         prevVideoPacketsLost = videoStats.videoPacketsLost;
         prevVideoPacketsRcvd = videoStats.videoPacketsReceived;
     }
     if ([stats isKindOfClass:[OTSubscriberKitAudioNetworkStats class]])
     {
-        audio_pl_ratio = -1;
+        //        audio_pl_ratio = -1;
         OTSubscriberKitAudioNetworkStats *audioStats =
         (OTSubscriberKitAudioNetworkStats *) stats;
         if (prevAudioPacketsRcvd != 0) {
             uint64_t pl = audioStats.audioPacketsLost - prevAudioPacketsLost;
             uint64_t pr = audioStats.audioPacketsReceived - prevAudioPacketsRcvd;
             uint64_t pt = pl + pr;
-            if (pt > 0)
-                audio_pl_ratio = (double) pl / (double) pt;
+            if (pt > 0) {
+                
+                double audio_pl_ratio_now = (double) pl / (double) pt;
+                audio_pl_ratio += audio_pl_ratio_now;
+                audio_pl_ratio_count++;
+                
+                NSLog(@"Bidchat Audio Packel Loss =%f Pass=%d Total=%f",audio_pl_ratio_now, audio_pl_ratio_count, audio_pl_ratio);
+                
+            }
         }
         prevAudioPacketsLost = audioStats.audioPacketsLost;
         prevAudioPacketsRcvd = audioStats.audioPacketsReceived;
@@ -374,7 +416,7 @@ audioNetworkStatsUpdated:(OTSubscriberKitAudioNetworkStats*)stats
     
     enum OTNetworkTestResult result = _result;
     OTError *error = [_error copy];
-
+    
     [self cleanupSession];
     
     [self dispatchResultsToDelegateWithResult:result
@@ -431,7 +473,7 @@ didFailWithError:(OTError*)error
     NSLog(@"subscriberDidConnectToStream (%@)",
           subscriber.stream.connection.connectionId);
     assert(_subscriber == subscriber);
-
+    
     if(!_runQualityStatsTest)
     {
         _result = OTNetworkTestResultVideoAndVoice;
@@ -455,7 +497,7 @@ didFailWithError:(OTError*)error
           error);
     [self dispatchResultsToDelegateWithResult:OTNetworkTestResultNotGood
                                         error:error];
-
+    
 }
 
 # pragma mark - OTPublisher delegate callbacks
